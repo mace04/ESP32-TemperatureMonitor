@@ -129,28 +129,20 @@ if (!!window.EventSource) {
   source.addEventListener('message', function(e) {
     console.log("message", e.data);
   }, false);
-  
-  // source.addEventListener('sensor_bmp180', function(e) {
-  //   console.log("sensor_bmp180", e.data);
-  //   var myObj = JSON.parse(e.data);
-  //   console.log(myObj);
-  //   gaugeTemp.value = myObj.temperature;
-  //   // gaugeHum.value = myObj.humidity;
-  // }, false);
 
-  // source.addEventListener('sensor_bme280', function(e) {
-  //   console.log("sensor_bme280", e.data);
-  //   var myObj = JSON.parse(e.data);
-  //   console.log(myObj);
-  //   gaugeTemp.value = myObj.temperature;
-  //   gaugeHum.value = myObj.humidity;
-  // }, false);
-
-    source.addEventListener('sensor_debug', function(e) {
-    console.log("sensor_debug", e.data);
+  source.addEventListener('sensor_data', function(e) {
     var myObj = JSON.parse(e.data);
     console.log(myObj);
     gaugeTemp.value = myObj.temperature;
-    gaugeHum.value = myObj.humidity;
+    if ('humidity' in myObj) {
+      // Property exists - you can access myObj.humidity
+      document.getElementById("humidity-card").style.display = "";
+      document.querySelector('.card-grid').classList.remove('single-card');
+      gaugeHum.value = myObj.humidity;
+    } else {
+      // Property does not exist - handle accordingly (e.g., hide the gauge or set a default)
+      document.getElementById("humidity-card").style.display = "none";
+      document.querySelector('.card-grid').classList.add('single-card');
+    }    
   }, false);
 }
