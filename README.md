@@ -2,6 +2,10 @@
 
 An IoT temperature and pressure monitoring system built on the ESP32 microcontroller using PlatformIO. This project integrates a BMP180 sensor for environmental readings, hosts a local MQTT broker, provides a web-based dashboard with real-time gauges, and supports over-the-air (OTA) updates for firmware and filesystem.
 
+## Project Summary
+
+The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental sensing and data visualization. It automatically detects and interfaces with BMP180 or BME280 sensors to collect temperature, pressure, and humidity data. The device establishes WiFi connectivity for remote access, hosts its own MQTT broker for local data publishing, and serves a responsive web dashboard featuring real-time animated gauges. Real-time updates are delivered via Server-Sent Events (SSE), ensuring live data visualization without page refreshes. The system supports over-the-air (OTA) updates for both firmware and filesystem, enabling seamless remote maintenance. All web assets and configurations are stored in the ESP32's SPIFFS flash filesystem, making it a self-contained, standalone monitoring solution.
+
 ## Table of Contents
 - [Features](#features)
 - [Hardware Requirements](#hardware-requirements)
@@ -28,14 +32,35 @@ An IoT temperature and pressure monitoring system built on the ESP32 microcontro
 - **OTA Updates**: Supports remote firmware and filesystem updates via a web form.
 - **SPIFFS Storage**: Stores web assets and configuration files in the ESP32's flash filesystem.
 
+### Sensor Capabilities
+- **Auto-Detection**: Automatically detects BMP180 or BME280 sensors on startup.
+- **Multi-Sensor Support**: Compatible with BMP180 (temperature and pressure) and BME280 (temperature, humidity, and pressure).
+- **Debug Mode**: Provides simulated sensor data when no physical sensor is detected, useful for development and testing.
+- **Configurable Sampling**: Adjustable reading interval (default: 2 seconds) for balancing responsiveness and power consumption.
+
+### Connectivity and Communication
+- **WiFi Management**: Robust WiFi connection handling with status monitoring.
+- **MQTT Publishing**: Publishes JSON-formatted sensor data to configurable MQTT topics.
+- **Server-Sent Events**: Real-time data streaming to web clients without polling.
+- **Web Server**: Asynchronous web server handling multiple concurrent connections.
+
 ### Data Handling
 - Publishes sensor data as JSON payloads to MQTT topics and SSE events.
 - Logs readings to the serial console for debugging.
+- Structured data format: `{"temperature": 25.00, "pressure": 101325.00}` or `{"temperature": 25.00, "humidity": 60.00}` depending on sensor.
 
 ### Web Interface
 - Temperature gauge: Linear display (0-40°C) with visual alerts above 30°C.
 - Pressure gauge: Radial display (0-100% simulated, though actual data is pressure).
+- Humidity gauge: For BME280 sensors, displays humidity levels.
 - Automatic updates without page refreshes.
+- Responsive design compatible with desktop and mobile devices.
+
+### Maintenance and Updates
+- **OTA Firmware Updates**: Upload new firmware binaries remotely.
+- **Filesystem Updates**: Update web assets and configurations via OTA.
+- **Serial Monitoring**: Detailed logging for troubleshooting and status monitoring.
+- **Partition Management**: Optimized flash partitioning for app and filesystem storage.
 
 ## Hardware Requirements
 - ESP32 DevKit v1 (or compatible board)
