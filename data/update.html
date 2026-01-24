@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="http://cdn.rawgit.com/Mikhus/canvas-gauges/gh-pages/download/2.1.7/all/gauge.min.js"></script>
+    <title>Update Firmware</title>
+</head>
+<body>
+    <div class="topnav">
+        <h1>3D PRINTER GAUGES FIRMWARE UPDATE</h1>
+        <div style="grid-column:2; justify-self:end; align-self:start;width:150px;">
+            <a href="/" class="link-button" title="Return to main menu">Home</a>
+        </div>
+    </div>
+    <div class="content">
+      <div class="card-grid">
+            <div class="card-flex">
+                <p class="card-title">Select Firmware</p>
+                <form method="POST" action="update" enctype="multipart/form-data">
+                    <div>
+                        <label for="uploadType">Select Upload Type:</label>
+                        <div class="radio-group">
+                            <div>
+                                <input type="radio" id="firmware" name="uploadType" value="firmware" checked>
+                                <label for="firmware">Firmware</label>
+                            </div>
+                            <div>
+                                <input type="radio" id="filesystem" name="uploadType" value="filesystem">
+                                <label for="filesystem">Filesystem</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="file">Select File:</label>
+                        <input type="file" id="file" name="file" accept=".bin" required>
+                    </div>
+                    <button type="submit">Upload</button>
+                </form>
+            
+            </div>
+        </div>
+    </div>
+</body>
+</html>
