@@ -24,10 +24,10 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 ## Features
 
 ### Core Capabilities
-- **Sensor Integration**: Reads temperature (°C) and atmospheric pressure (Pa) from a BMP180 sensor every 2 seconds.
+- **Sensor Integration**: Automatically detects and reads environmental data from BMP180 (temperature and pressure), BME280 (temperature, humidity, and pressure), or provides simulated data in debug mode. Readings are taken at configurable intervals (default: 2 seconds).
 - **WiFi Connectivity**: Connects to a specified WiFi network for remote access.
-- **Local MQTT Broker**: Hosts an internal MQTT server for publishing sensor data.
-- **Web Dashboard**: Serves a responsive web interface with animated gauges for real-time data visualization.
+- **Local MQTT Broker**: Hosts an internal MQTT server for publishing sensor data to topics based on sensor type (e.g., `sensors/bmp180`, `sensors/bme280`, or `sensors/debug`).
+- **Web Dashboard**: Serves a responsive web interface with animated gauges for real-time data visualization, including an initial data fetch via the `/readings` endpoint.
 - **Real-Time Updates**: Uses Server-Sent Events (SSE) to push live sensor readings to web clients.
 - **OTA Updates**: Supports remote firmware and filesystem updates via a web form.
 - **SPIFFS Storage**: Stores web assets and configuration files in the ESP32's flash filesystem.
