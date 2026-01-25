@@ -31,6 +31,11 @@ var gaugeTemp = new LinearGauge({
   strokeTicks: true,
   highlights: [
       {
+          "from": 20,
+          "to": 30,
+          "color": "rgba(0, 128, 0, .75)"
+      },
+      {
           "from": 30,
           "to": 40,
           "color": "rgba(200, 50, 50, .75)"
@@ -113,6 +118,23 @@ function getReadings(){
   xhr.send();
 }
 
+function playAlertTone() {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.value = 880; // A5 tone
+    gain.gain.value = 0.2;
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.4); // 400ms beep
+}
+
+alertPlayed = false;
 if (!!window.EventSource) {
   var source = new EventSource('/events');
   
@@ -134,6 +156,10 @@ if (!!window.EventSource) {
     var myObj = JSON.parse(e.data);
     console.log(myObj);
     gaugeTemp.value = myObj.temperature;
+    if (myObj.temperature >= 15 && !alertPlayed) {
+      playAlertTone();
+      alertPlayed = true;
+    }
     if ('humidity' in myObj) {
       // Property exists - you can access myObj.humidity
       document.getElementById("humidity-card").style.display = "";
