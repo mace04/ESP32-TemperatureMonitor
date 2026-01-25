@@ -5,6 +5,9 @@
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
 #include <Update.h>
+#include"sensor.h"
+
+extern Sensor sensor;
 
 namespace WifiSetup {
     const char* SSID = "SKYPGFYX";
@@ -164,6 +167,13 @@ namespace WifiSetup {
             WifiSetup::handlePostUpdate(request);
         }, [](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
             WifiSetup::handlePostUpload(request, filename, index, data, len, final);
+        });
+
+        // Request for the latest sensor readings
+        server.on("/readings", HTTP_GET, [](AsyncWebServerRequest *request){
+            String json = sensor.getJSONData ();
+            request->send(200, "application/json", json);
+            json = String();
         });
 
         server.addHandler(&events);

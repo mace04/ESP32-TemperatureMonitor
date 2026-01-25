@@ -29,34 +29,19 @@ void loop() {
   if (now - lastPublish >= publishIntervalMs) {
     lastPublish = now;
 
-    float t, h;
-    static int debug_count = 0;
-    if (sensor.read(t,h)) {
-      String payload = String(F("{\"temperature\": ")) + String(t,2);
-      if (sensor.sensorType == USE_BME280) {
-        payload += String(F(", \"humidity\": ")) + String(h,2);
-      } else if(sensor.sensorType == USE_DEBUG) {
-        debug_count++;
-        // Send humidity every 5th reading for debug sensor
-        if (debug_count <= 10) {
-          payload += String(F(", \"humidity\": ")) + String(h,2);
-        } else if(debug_count > 20) {
-          debug_count = 0;
-        }
-      }
-      payload += F(" }");
-      WifiSetup::events.send(payload.c_str(), "sensor_data", millis());
+    String payload = sensor.getJSONData();
+    WifiSetup::events.send(payload.c_str(), "sensor_data", millis());
 
-      if(sensor.sensorType == USE_BMP180) {
-        mqtt.publish("sensors/bmp180", payload.c_str());
-      } else if(sensor.sensorType == USE_BME280) {
-        mqtt.publish("sensors/bme280", payload.c_str());
-      } else {
-        mqtt.publish("sensors/debug", payload.c_str());
-      }
-      Serial.println(payload);
+    if(sensor.sensorType == USE_BMP180) {
+      mqtt.publish("sensors/bmp180", payload.c_str());
+    } else if(sensor.sensorType == USE_BME280) {
+      mqtt.publish("sensors/bme280", payload.c_str());
+    } else {
+      mqtt.publish("sensors/debug", payload.c_str());
     }
+    Serial.println(payload);
   }
+  delay(50);
 
   // Broker loop if required by your library
   // broker.loop();  // depends on implementation

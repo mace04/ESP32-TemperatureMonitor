@@ -56,19 +56,28 @@ public:
     return true;
   }
 
-  bool read(float& temperature) {
-    if(sensorType == USE_BMP180) {
-      temperature = bmp.readTemperature();
-    } else if(sensorType == USE_BME280) {
-      temperature = bme.readTemperature();
-    } else if(sensorType == USE_DEBUG) {
-      // Provide dummy values for debugging
-      temperature = debug_temp;
-      debug_temp += random(1,5) / 10.00;
-    } else {
-      return false;
+  String getJSONData() {
+    float t, h;
+    static int debug_count = 0;
+    if (read(t,h)) {
+      String payload = String(F("{\"temperature\": ")) + String(t,2);
+      if (sensorType == USE_BME280) {
+        payload += String(F(", \"humidity\": ")) + String(h,2);
+      } 
+      else if(sensorType == USE_DEBUG) {
+        debug_count++;
+        // Send humidity every 5th reading for debug sensor
+        if (debug_count <= 10) {
+          payload += String(F(", \"humidity\": ")) + String(h,2);
+        } 
+        else if(debug_count > 20) {
+          debug_count = 0;
+        }
+      }
+      payload += F(" }");
+      return payload;
     }
-    return true;
+    return String(F("{\"error\": \"Sensor read failed\"}"));
   }
 private:
   Adafruit_BMP085 bmp;
