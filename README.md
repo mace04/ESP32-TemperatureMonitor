@@ -165,8 +165,6 @@ Edit `include/wifi_setup.h`:
 
 ## Known Issues
 
-- **Data Mismatch**: Sensor provides temperature and pressure, but the web interface expects temperature and humidity. Update `script.js` to handle pressure instead of humidity.
-- **Missing Endpoint**: JS attempts to fetch `/readings` on load, but no handler exists. Implement a GET `/readings` endpoint to return current sensor data.
 - **MQTT Loop**: `broker.loop()` is commented out; uncomment if required by PicoMQTT.
 - **Hardcoded Credentials**: WiFi settings are not configurable at runtime.
 - **No Authentication**: Web and MQTT access are unsecured.
