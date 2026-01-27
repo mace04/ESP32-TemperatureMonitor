@@ -13,6 +13,8 @@ const unsigned long publishIntervalMs = 2000;
 void setup() {
   Serial.begin(115200);
 
+  Serial.println("Firmware version " + String(VERSION));
+
   WifiSetup::connect();
   WifiSetup::initWebServer();
 
@@ -31,14 +33,7 @@ void loop() {
 
     String payload = sensor.getJSONData();
     WifiSetup::events.send(payload.c_str(), "sensor_data", millis());
-
-    if(sensor.sensorType == USE_BMP180) {
-      mqtt.publish("sensors/bmp180", payload.c_str());
-    } else if(sensor.sensorType == USE_BME280) {
-      mqtt.publish("sensors/bme280", payload.c_str());
-    } else {
-      mqtt.publish("sensors/debug", payload.c_str());
-    }
+    mqtt.publish("sensor", payload.c_str());
     Serial.println(payload);
   }
   delay(50);

@@ -26,7 +26,7 @@ def before_build(env):
     if os.path.exists(version_file):
         new_version = increment_version(version_file)
         print(f"Updated firmware version to: {new_version}")
-        env.Append(CPPDEFINES=[("FIRMWARE_VERSION", f'\\"{new_version}\\"')])
+        env.Append(CPPDEFINES=[("VERSION", f'\\"{new_version}\\"')])
 
 # Register the build script
 Import("env")
