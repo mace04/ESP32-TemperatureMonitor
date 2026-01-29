@@ -33,8 +33,9 @@ void loop() {
 
     String payload = sensor.getJSONData();
     WifiSetup::events.send(payload.c_str(), "sensor_data", millis());
-    mqtt.publish("sensor", payload.c_str());
+    mqtt.publish("mqtt/sensor", payload.c_str());
     Serial.println(payload);
+    mqtt.loop();
   }
   delay(50);
 

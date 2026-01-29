@@ -11,6 +11,10 @@ public:
     broker.publish(topic, payload);
   }
 
+  void loop() {
+    broker.loop();
+  }
+
 private:
   PicoMQTT::Server broker;
 };
