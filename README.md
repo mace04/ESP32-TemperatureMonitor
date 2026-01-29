@@ -72,9 +72,10 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 - PlatformIO IDE or CLI
 - Arduino framework for ESP32
 - Libraries (automatically installed via PlatformIO):
-  - Adafruit BMP085 Library
-  - PicoMQTT
-  - ESPAsyncWebServer
+  - [Adafruit BMP085 Library](https://github.com/adafruit/Adafruit_BMP085_Library)
+  - [Adafruit BME280 Library](https://github.com/adafruit/Adafruit_BME280_Library)
+  - [PicoMQTT](https://github.com/mlesniew/PicoMQTT)
+  - [ESPAsyncWebServer](https://github.com/esp32async/ESPAsyncWebServer)
 
 ## Installation
 
