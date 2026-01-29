@@ -73,6 +73,7 @@ public:
         else if(debug_count > 20) {
           debug_count = 0;
         }
+        payload += String(F(", \"isDebug\": true"));
       }
       payload += F(" }");
       return payload;
