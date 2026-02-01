@@ -30,6 +30,7 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 - **Web Dashboard**: Serves a responsive web interface with animated gauges for real-time data visualization, including an initial data fetch via the `/readings` endpoint.
 - **Real-Time Updates**: Uses Server-Sent Events (SSE) to push live sensor readings to web clients.
 - **OTA Updates**: Supports remote firmware and filesystem updates via a web form.
+- **LCD Display (I2C 20x4)**: Shows temperature, humidity (if supported), IP address, and a live clock. The display updates efficiently (only when values change), and shows a dedicated message during firmware/filesystem uploads.
 - **SPIFFS Storage**: Stores web assets and configuration files in the ESP32's flash filesystem.
 
 ### Sensor Capabilities
@@ -65,6 +66,7 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 ## Hardware Requirements
 - ESP32 DevKit v1 (or compatible board)
 - BMP180 temperature and pressure sensor (connected via I2C)
+- 20x4 I2C LCD display (typical address 0x27 or 0x3F)
 - USB cable for programming and power
 - Optional: External power supply for standalone operation
 
@@ -76,6 +78,7 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
   - [Adafruit BME280 Library](https://github.com/adafruit/Adafruit_BME280_Library)
   - [PicoMQTT](https://github.com/mlesniew/PicoMQTT)
   - [ESPAsyncWebServer](https://github.com/esp32async/ESPAsyncWebServer)
+  - [LiquidCrystal_I2C](https://github.com/marcoschwartz/LiquidCrystal_I2C)
 
 ## Installation
 
@@ -131,6 +134,13 @@ Edit `include/wifi_setup.h`:
 3. Access the web dashboard at `http://<ESP32-IP>/` (find IP via serial logs or router admin).
 4. Sensor data is published to MQTT and sent via SSE every 2 seconds.
 5. Use the `/update` page for OTA updates.
+
+### LCD Display Behavior
+- Temperature updates only when it changes.
+- Humidity updates only when it changes (and only if a humidity sensor is present).
+- IP address is displayed once after boot.
+- Time updates every second.
+- During OTA uploads, the LCD shows "Uploading firmware" or "Uploading filesystem" and suppresses other updates.
 
 ### Serial Output
 - Monitors connection status, sensor readings, and errors.
