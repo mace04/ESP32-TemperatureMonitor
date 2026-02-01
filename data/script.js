@@ -157,7 +157,7 @@ if (!!window.EventSource) {
     console.log(myObj);
     gaugeTemp.value = myObj.temperature;
     if (myObj.temperature >= 15 && !alertPlayed) {
-      playAlertTone();
+      // playAlertTone();
       alertPlayed = true;
     }
     if ('humidity' in myObj) {
