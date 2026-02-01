@@ -5,9 +5,11 @@
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
 #include <Update.h>
-#include"sensor.h"
+#include "sensor.h"
+#include "lcd_display.h"
 
 extern Sensor sensor;
+extern LCDDisplay lcd;
 
 namespace WifiSetup {
     const char* SSID = "SKYPGFYX";
@@ -15,6 +17,11 @@ namespace WifiSetup {
 
     AsyncWebServer server(80);
     AsyncEventSource events("/events");
+    static bool uploadInProgress = false;
+
+    bool isUploading() {
+        return uploadInProgress;
+    }
 
     void handleGetUpdate(AsyncWebServerRequest *request) {
         File file = SPIFFS.open("/update.html", "r");
@@ -44,6 +51,7 @@ namespace WifiSetup {
         if (index == 0) {
             Serial.printf("Upload Start: %s\n", filename.c_str());
             updateSize = 0;
+            uploadInProgress = true;
 
             // Determine upload type from HTTP argument
             if (request->hasArg("uploadType")) {
@@ -56,8 +64,10 @@ namespace WifiSetup {
 
             // Handle firmware update
             if (uploadType == "firmware") {
+                lcd.displayUploadMessage("Uploading firmware");
                 if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) {
                     Update.printError(Serial);
+                    uploadInProgress = false;
                     request->send(500, "text/plain", "OTA begin failed");
                     return;
                 }
@@ -65,6 +75,7 @@ namespace WifiSetup {
             }
             // Handle filesystem upload
             else if (uploadType == "filesystem") {
+                lcd.displayUploadMessage("Uploading filesystem");
                 // Backup settings.json if the upload type is filesystem
                 if (uploadType == "filesystem") {
                     if (SPIFFS.exists("/settings.json")) {
@@ -74,12 +85,14 @@ namespace WifiSetup {
                 }            
                 if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
                     Update.printError(Serial);
+                    uploadInProgress = false;
                     request->send(500, "text/plain", "OTA begin failed");
                     return;
                 }
                 Serial.println("Started filesystem update...");
             }
             else {
+                uploadInProgress = false;
                 request->send(400, "text/plain", "Invalid uploadType parameter. Use 'firmware' or 'filesystem'");
                 return;
             }
@@ -110,6 +123,7 @@ namespace WifiSetup {
                 ESP.restart();
             } else {
                 Update.printError(Serial);
+                uploadInProgress = false;
                 request->send(500, "text/plain", "OTA end failed");
             }
         }
