@@ -14,6 +14,7 @@ extern LCDDisplay lcd;
 namespace WifiSetup {
     const char* SSID = "SKYPGFYX";
     const char* PASSWORD = "HDXvtRKbPi8i";
+    const char* HOSTNAME = "esp32-temp-mon";
 
     AsyncWebServer server(80);
     AsyncEventSource events("/events");
@@ -131,6 +132,7 @@ namespace WifiSetup {
 
     void connect() {
         WiFi.mode(WIFI_STA);
+        WiFi.setHostname(HOSTNAME);
         WiFi.begin(SSID, PASSWORD);
         Serial.print("Connecting to WiFi");
         for (int i = 0; i < 10 && WiFi.status() != WL_CONNECTED; i++) {
