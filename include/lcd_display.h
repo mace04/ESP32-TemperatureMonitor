@@ -80,17 +80,21 @@ public:
   // Update time every second
   void updateTime() {
     lcd.setCursor(0, 3);
-    unsigned long seconds = millis() / 1000;
-    unsigned long minutes = seconds / 60;
-    unsigned long secs = seconds % 60;
+    unsigned long totalSeconds = millis() / 1000;
+    unsigned long hours = totalSeconds / 3600;
+    unsigned long minutes = (totalSeconds % 3600) / 60;
+    unsigned long secs = totalSeconds % 60;
     
     lcd.print("Time: ");
+    if (hours < 10) lcd.print("0");
+    lcd.print(hours);
+    lcd.print(":");
     if (minutes < 10) lcd.print("0");
     lcd.print(minutes);
     lcd.print(":");
     if (secs < 10) lcd.print("0");
     lcd.print(secs);
-    lcd.print("  ");  // Extra spaces to clear old text
+    lcd.print(" ");  // Extra space to clear old text
   }
 
   void displayError(const char* errorMsg) {
