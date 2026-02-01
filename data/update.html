@@ -43,5 +43,16 @@
             </div>
         </div>
     </div>
+    <div style="position: fixed; bottom: 10px; right: 10px; color: #888; font-size: 12px;">
+      Version: <span id="version">Loading...</span>
+    </div>
+    <script>
+      // Fetch version from server
+      fetch('/version').then(r => r.text()).then(v => {
+        document.getElementById('version').textContent = v;
+      }).catch(() => {
+        document.getElementById('version').textContent = 'Unknown';
+      });
+    </script>
 </body>
 </html>

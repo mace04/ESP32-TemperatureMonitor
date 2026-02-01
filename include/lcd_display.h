@@ -8,7 +8,7 @@ public:
   LCDDisplay(uint8_t address = 0x27) : lcd(address, 20, 4), 
     lastTemp(-999.0), lastHumidity(-999.0), ipDisplayed(false) {}
 
-  bool begin() {
+  bool begin(const char* version = "") {
     // Initialize I2C LCD
     lcd.init();
     lcd.backlight();
@@ -18,6 +18,11 @@ public:
     lcd.print("Temperature Monitor");
     lcd.setCursor(0, 1);
     lcd.print("Initializing...");
+    if (version && version[0] != '\0') {
+      lcd.setCursor(0, 2);
+      lcd.print("Version: ");
+      lcd.print(version);
+    }
     
     delay(2000);
     lcd.clear();

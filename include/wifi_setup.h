@@ -190,6 +190,12 @@ namespace WifiSetup {
             json = String();
         });
 
+        // Serve firmware version
+        server.on("/version", HTTP_GET, [](AsyncWebServerRequest *request){
+             
+            request->send(200, "text/json", "{\"version\":\"" + String(VERSION) +  "\"}");
+        });
+
         server.addHandler(&events);
 
         server.begin();

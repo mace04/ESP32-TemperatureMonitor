@@ -27,6 +27,18 @@
         </div>
       </div>
     </div>
+    <div style="position: fixed; bottom: 10px; right: 10px; color: #888; font-size: 12px;">
+      Version: <span id="version">Loading...</span>
+    </div>
     <script src="script.js"></script>
+    <script>
+      // Fetch version from server
+      fetch('/version').then(r => r.text()).then(v => {
+            var myObj = JSON.parse(v);
+        document.getElementById('version').textContent = myObj.version;
+      }).catch(() => {
+        document.getElementById('version').textContent = 'Unknown';
+      });
+    </script>
   </body>
 </html>

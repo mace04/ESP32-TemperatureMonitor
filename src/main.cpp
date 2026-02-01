@@ -21,7 +21,7 @@ void setup() {
   Serial.println("Firmware version " + String(VERSION));
 
   // Initialize LCD display
-  if (!lcd.begin()) {
+  if (!lcd.begin(VERSION)) {
     Serial.println("LCD Initialization failed");
   }
 
