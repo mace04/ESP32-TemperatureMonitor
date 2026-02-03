@@ -80,6 +80,27 @@ public:
     }
     return String(F("{\"error\": \"Sensor read failed\"}"));
   }
+  String getJSONData(float& temperature, float& humidity) {
+    float t, h;
+    static int debug_count = 0;
+    String payload = String(F("{\"temperature\": ")) + String(temperature,2);
+    if (sensorType == USE_BME280) {
+      payload += String(F(", \"humidity\": ")) + String(humidity,2);
+    } 
+    else if(sensorType == USE_DEBUG) {
+      debug_count++;
+      // Send humidity every 5th reading for debug sensor
+      if (debug_count <= 10) {
+        payload += String(F(", \"humidity\": ")) + String(humidity ,2);
+      } 
+      else if(debug_count > 20) {
+        debug_count = 0;
+      }
+      payload += String(F(", \"isDebug\": true"));
+    }
+    payload += F(" }");
+    return payload;
+  }
 private:
   Adafruit_BMP085 bmp;
   Adafruit_BME280 bme;

@@ -45,6 +45,15 @@ public:
     }
   }
 
+    // Display IP address once at boot time
+  void updateStatus(const char* status) {
+    lcd.setCursor(0, 2);
+    lcd.print("                    ");  // Clear line
+    lcd.setCursor(0, 2);
+    lcd.print("STATUS: ");
+    lcd.print(status);
+  }
+
   // Update temperature only if it changed
   void updateTemperature(float temperature) {
     // Only update if temperature changed by at least 0.1 degrees
