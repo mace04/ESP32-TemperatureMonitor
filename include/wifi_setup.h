@@ -7,9 +7,11 @@
 #include <Update.h>
 #include "sensor.h"
 #include "lcd_display.h"
+#include "settings.h"
 
 extern Sensor sensor;
 extern LCDDisplay lcd;
+extern Settings settings;
 
 namespace WifiSetup {
     const char* SSID = "SKYPGFYX";
@@ -184,6 +186,45 @@ namespace WifiSetup {
         }, [](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
             WifiSetup::handlePostUpload(request, filename, index, data, len, final);
         });
+
+        // Settings file GET
+        server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request) {
+            if (!SPIFFS.exists("/settings.json")) {
+                settings.save();
+            }
+            request->send(SPIFFS, "/settings.json", "application/json");
+        });
+
+        // Settings file POST (replace existing file)
+        server.on(
+            "/settings",
+            HTTP_POST,
+            [](AsyncWebServerRequest *request) {
+                request->send(200, "application/json", "{\"status\": \"ok\"}");
+            },
+            nullptr,
+            [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+                static File file;
+                if (index == 0) {
+                    file = SPIFFS.open("/settings.json", "w");
+                    if (!file) {
+                        request->send(500, "application/json", "{\"error\": \"Failed to open settings file\"}");
+                        return;
+                    }
+                }
+
+                if (file) {
+                    file.write(data, len);
+                }
+
+                if (index + len == total) {
+                    if (file) {
+                        file.close();
+                    }
+                    settings.load();
+                }
+            }
+        );
 
         // Request for the latest sensor readings
         server.on("/readings", HTTP_GET, [](AsyncWebServerRequest *request){
