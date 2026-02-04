@@ -25,6 +25,7 @@ body {
   margin: 0 auto; 
   display: grid; 
   grid-gap: 2rem; 
+  border-radius: 8px;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 .card-grid.single-card {
@@ -85,12 +86,12 @@ button {
 }
 
 .status-card {
-  max-width: 800px;
+  max-width: 1200px; 
   margin: 0 auto 30px;
   background-color: white;
   box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
   padding: 20px;
-  border-radius: 8px;
+  /* border-radius: 8px; */
 }
 
 .status-card h2 {
@@ -127,6 +128,65 @@ button {
   color: #e65100;
   border: 3px solid #ff9800;
   animation: pulse-warning 1s infinite;
+}
+
+.expandable-card {
+  max-width: 1200px;
+  margin: 0 auto 30px;
+  background-color: white;
+  box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
+  /* border-radius: 8px; */
+  padding: 12px 20px 20px;
+}
+
+.expandable-card summary {
+  cursor: pointer;
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #034078;
+  list-style: none;
+  position: relative;
+  text-align: center;
+  padding-right: 20px;
+  display: block;
+}
+
+.expandable-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.expandable-card summary::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #034078;
+  border-bottom: 2px solid #034078;
+  transform: translateY(-50%) rotate(-45deg);
+  transition: transform 0.3s ease;
+}
+
+.expandable-card[open] summary::before {
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.camera-content {
+  margin-top: 15px;
+}
+
+.camera-placeholder {
+  color: #666;
+  font-size: 0.95rem;
+  margin-bottom: 10px;
+}
+
+.camera-stream {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  display: none;
 }
 
 @keyframes pulse-ready {

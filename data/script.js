@@ -1,5 +1,8 @@
 // Get current sensor readings when the page loads  
-window.addEventListener('load', getReadings);
+window.addEventListener('load', function () {
+  getReadings();
+  loadSettings();
+});
 
 // Create Temperature Gauge
 var gaugeTemp = new LinearGauge({
@@ -132,6 +135,29 @@ function playAlertTone() {
 
     osc.start();
     osc.stop(ctx.currentTime + 0.4); // 400ms beep
+}
+
+function loadSettings() {
+  fetch('/settings')
+    .then(r => r.json())
+    .then(settings => {
+      if (settings.camera_url) {
+        const stream = document.getElementById('camera-stream');
+        const placeholder = document.getElementById('camera-placeholder');
+        stream.src = settings.camera_url;
+        stream.onload = function () {
+          if (placeholder) placeholder.style.display = 'none';
+          stream.style.display = 'block';
+        };
+        stream.onerror = function () {
+          if (placeholder) placeholder.textContent = 'Camera stream unavailable';
+        };
+      }
+    })
+    .catch(() => {
+      const placeholder = document.getElementById('camera-placeholder');
+      if (placeholder) placeholder.textContent = 'Unable to load camera settings';
+    });
 }
 
 alertPlayed = false;
