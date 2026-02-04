@@ -69,9 +69,20 @@ void loop() {
     if (sensor.read(temperature, humidity)) {
 
       String payload = sensor.getJSONData(temperature, humidity);
-      WifiSetup::events.send(payload.c_str(), "sensor_data", millis());
+      
+      // Add printer status to payload for web interface
+      String statusStr = "NOT READY";
+      if (printerStatus == READY) statusStr = "READY";
+      else if (printerStatus == TOO_HOT) statusStr = "TOO HOT";
+      
+      // Create enhanced payload with status
+      String webPayload = payload;
+      webPayload.remove(webPayload.length() - 2); // Remove closing brace and space
+      webPayload += String(F(", \"status\": \"")) + statusStr + F("\" }");
+      
+      WifiSetup::events.send(webPayload.c_str(), "sensor_data", millis());
       mqtt.publish("mqtt/sensor", payload.c_str());
-      Serial.println(payload);
+      Serial.println(webPayload);
 
       float readyThreshold = settings.getReadyToPrintThreshold();
       float highThreshold = settings.getHighTemperatureThreshold();

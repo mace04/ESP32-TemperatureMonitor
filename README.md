@@ -176,7 +176,6 @@ Edit `include/wifi_setup.h`:
 
 ## Known Issues
 
-- **MQTT Loop**: `broker.loop()` is commented out; uncomment if required by PicoMQTT.
 - **Hardcoded Credentials**: WiFi settings are not configurable at runtime.
 - **No Authentication**: Web and MQTT access are unsecured.
 

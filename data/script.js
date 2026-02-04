@@ -169,6 +169,38 @@ if (!!window.EventSource) {
       // Property does not exist - handle accordingly (e.g., hide the gauge or set a default)
       document.getElementById("humidity-card").style.display = "none";
       document.querySelector('.card-grid').classList.add('single-card');
-    }    
+    }
+    
+    // Update printer status if included
+    if ('status' in myObj) {
+      updatePrinterStatus(myObj.status);
+    }
   }, false);
+}
+
+function updatePrinterStatus(status) {
+  const statusElement = document.getElementById('printer-status');
+  const statusText = statusElement.querySelector('.status-text');
+  
+  // Remove all status classes
+  statusElement.classList.remove('not-ready', 'ready', 'too-hot');
+  
+  // Add appropriate class and text based on status
+  switch(status) {
+    case 'READY':
+      statusElement.classList.add('ready');
+      statusText.textContent = 'READY';
+      break;
+    case 'TOO_HOT':
+    case 'TOO HOT':
+      statusElement.classList.add('too-hot');
+      statusText.textContent = 'TOO HOT';
+      break;
+    case 'NOT_READY':
+    case 'NOT READY':
+    default:
+      statusElement.classList.add('not-ready');
+      statusText.textContent = 'NOT READY';
+      break;
+  }
 }

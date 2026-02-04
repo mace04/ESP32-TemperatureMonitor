@@ -83,3 +83,66 @@ button {
     color: beige;
     text-align: center
 }
+
+.status-card {
+  max-width: 800px;
+  margin: 0 auto 30px;
+  background-color: white;
+  box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.status-card h2 {
+  color: #034078;
+  font-size: 1.5rem;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.status-display {
+  padding: 20px;
+  border-radius: 8px;
+  font-size: 2rem;
+  font-weight: bold;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.status-display.not-ready {
+  background-color: #ffebee;
+  color: #c62828;
+  border: 3px solid #ef5350;
+}
+
+.status-display.ready {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border: 3px solid #66bb6a;
+  animation: pulse-ready 2s infinite;
+}
+
+.status-display.too-hot {
+  background-color: #fff3e0;
+  color: #e65100;
+  border: 3px solid #ff9800;
+  animation: pulse-warning 1s infinite;
+}
+
+@keyframes pulse-ready {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(46, 125, 50, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(46, 125, 50, 0.8);
+  }
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(230, 81, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(230, 81, 0, 0.8);
+  }
+}
