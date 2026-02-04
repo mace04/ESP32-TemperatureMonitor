@@ -50,7 +50,7 @@ public:
     lcd.setCursor(0, 2);
     lcd.print("                    ");  // Clear line
     lcd.setCursor(0, 2);
-    lcd.print("STATUS: ");
+    lcd.print("Status: ");
     lcd.print(status);
   }
 
