@@ -18,6 +18,7 @@ const unsigned long timeUpdateIntervalMs = 1000;  // Update time every 1 second
 bool sensorInitialized = false;
 bool temperatureAboveThreshold = false;  // Track alert state for ready_to_print
 bool temperatureAboveHighThreshold = false;  // Track alert state for temperature_high
+bool temperatureBelowThreshold = false;  // Track alert state for temperature_low
 enum PrinterStatus{
   NOT_READY,
   READY,
@@ -76,9 +77,9 @@ void loop() {
       float highThreshold = settings.getHighTemperatureThreshold();
 
       // Check for temperature threshold not reached (temperature_low)
-      if (temperature < readyThreshold && !temperatureAboveThreshold) {
-        // Temperature just crossed above threshold
-        temperatureAboveThreshold = true;
+      if (temperature < readyThreshold && !temperatureBelowThreshold) {
+        // Temperature just fell below threshold
+        temperatureBelowThreshold = true;
         String alertPayload = String(F("{\"alert\": \"temperature_low\", \"temperature\": ")) + 
                             String(temperature, 2) + F(", \"threshold\": ") + 
                             String(readyThreshold, 1) + F("}");
@@ -87,9 +88,9 @@ void loop() {
         Serial.println(alertPayload);
         printerStatus = NOT_READY;
         printerStatusChanged = true;
-      } else if (temperature < readyThreshold && temperatureAboveThreshold) {
-        // Temperature fell back below threshold - reset flag
-        temperatureAboveThreshold = false;
+      } else if (temperature >= readyThreshold && temperatureBelowThreshold) {
+        // Temperature rose back above threshold - reset flag
+        temperatureBelowThreshold = false;
       }
 
       // Check for temperature threshold crossing (ready_to_print)
