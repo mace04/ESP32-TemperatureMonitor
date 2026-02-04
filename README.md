@@ -24,14 +24,15 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 ## Features
 
 ### Core Capabilities
-- **Sensor Integration**: Automatically detects and reads environmental data from BMP180 (temperature and pressure), BME280 (temperature, humidity, and pressure), or provides simulated data in debug mode. Readings are taken at configurable intervals (default: 2 seconds).
+- **Sensor Integration**: Automatically detects and reads environmental data from BMP180 (temperature), BME280 (temperature and humidity), or provides simulated data in debug mode. Readings are taken at configurable intervals (default: 2 seconds).
 - **WiFi Connectivity**: Connects to a specified WiFi network for remote access.
-- **Local MQTT Broker**: Hosts an internal MQTT server for publishing sensor data to topics based on sensor type (e.g., `sensors/bmp180`, `sensors/bme280`, or `sensors/debug`).
-- **Web Dashboard**: Serves a responsive web interface with animated gauges for real-time data visualization, including an initial data fetch via the `/readings` endpoint.
-- **Real-Time Updates**: Uses Server-Sent Events (SSE) to push live sensor readings to web clients.
+- **Local MQTT Broker**: Hosts an internal MQTT server for publishing sensor data and alerts.
+- **Web Dashboard**: Serves a responsive web interface with animated gauges, printer status, and camera stream support.
+- **Real-Time Updates**: Uses Server-Sent Events (SSE) to push live sensor readings and printer status to web clients.
 - **OTA Updates**: Supports remote firmware and filesystem updates via a web form.
-- **LCD Display (I2C 20x4)**: Shows temperature, humidity (if supported), IP address, and a live clock. The display updates efficiently (only when values change), and shows a dedicated message during firmware/filesystem uploads.
+- **LCD Display (I2C 20x4)**: Shows temperature, humidity (if supported), IP address, printer status, and a live clock. The display updates efficiently (only when values change), and shows a dedicated message during firmware/filesystem uploads.
 - **SPIFFS Storage**: Stores web assets and configuration files in the ESP32's flash filesystem.
+- **Settings File**: Persists thresholds and camera URL in `/settings.json`, with automatic creation on first boot.
 
 ### Sensor Capabilities
 - **Auto-Detection**: Automatically detects BMP180 or BME280 sensors on startup.
@@ -48,12 +49,14 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 ### Data Handling
 - Publishes sensor data as JSON payloads to MQTT topics and SSE events.
 - Logs readings to the serial console for debugging.
-- Structured data format: `{"temperature": 25.00, "pressure": 101325.00}` or `{"temperature": 25.00, "humidity": 60.00}` depending on sensor.
+- Structured data format: `{"temperature": 25.00, "humidity": 60.00}` (humidity only when available).
+- Emits printer status with SSE payloads for UI updates.
 
 ### Web Interface
-- Temperature gauge: Linear display (0-40°C) with visual alerts above 30°C.
-- Pressure gauge: Radial display (0-100% simulated, though actual data is pressure).
-- Humidity gauge: For BME280 sensors, displays humidity levels.
+- Temperature gauge: Linear display (0-40°C) with visual alerts.
+- Humidity gauge: For BME280 sensors, displays humidity levels (hidden otherwise).
+- **3D Printer Environment Status**: Shows NOT READY / READY / TOO HOT based on thresholds.
+- **3D Printer Camera**: Expandable card that streams from a configurable URL.
 - Automatic updates without page refreshes.
 - Responsive design compatible with desktop and mobile devices.
 
@@ -79,6 +82,7 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
   - [PicoMQTT](https://github.com/mlesniew/PicoMQTT)
   - [ESPAsyncWebServer](https://github.com/esp32async/ESPAsyncWebServer)
   - [LiquidCrystal_I2C](https://github.com/marcoschwartz/LiquidCrystal_I2C)
+   - [ArduinoJson](https://github.com/bblanchon/ArduinoJson)
 
 ## Installation
 
@@ -123,6 +127,18 @@ Edit `include/wifi_setup.h`:
 - The BMP180 sensor is configured for default I2C pins (SDA: GPIO 21, SCL: GPIO 22 on ESP32).
 - Adjust `publishIntervalMs` in `src/main.cpp` to change the reading interval (default: 2000ms).
 
+### Settings File
+Stored in `/settings.json` on SPIFFS. Created automatically if missing.
+
+Example:
+```
+{
+   "ready_to_print_threshold": 20.0,
+   "temperature_high_threshold": 30.0,
+   "camera_url": "http://192.168.0.18:8080/?action=stream"
+}
+```
+
 ### Partition Scheme
 - Uses `default_1.5MBapp_spiffs768KB.csv` for 1.5MB app space and 768KB SPIFFS.
 - Located in PlatformIO's framework directory.
@@ -140,6 +156,7 @@ Edit `include/wifi_setup.h`:
 - Humidity updates only when it changes (and only if a humidity sensor is present).
 - IP address is displayed once after boot.
 - Time updates every second.
+- Printer status updates when thresholds are crossed.
 - During OTA uploads, the LCD shows "Uploading firmware" or "Uploading filesystem" and suppresses other updates.
 
 ### Serial Output
@@ -147,14 +164,19 @@ Edit `include/wifi_setup.h`:
 
 ## Web Interface
 
-- **Dashboard (`/` or `/index`)**: Displays temperature and pressure gauges.
+- **Dashboard (`/` or `/index`)**: Displays temperature gauge, humidity gauge (if available), printer status, and camera card.
 - **Update Page (`/update`)**: Form for uploading firmware or filesystem updates.
 - **Static Files**: CSS and JS served from SPIFFS.
 
 ## MQTT Broker
 
-- **Topic**: `sensors/bmp180`
-- **Payload**: `{"temperature": 25.00, "pressure": 101325.00}`
+- **Sensor Topic**: `mqtt/sensor`
+   - Payload: `{"temperature": 25.00, "humidity": 60.00, "status": "READY"}` (humidity only when available)
+- **Alert Topic**: `mqtt/alerts`
+   - Payloads:
+      - `{"alert": "temperature_low", "temperature": 18.50, "threshold": 20.0}`
+      - `{"alert": "ready_to_print", "temperature": 21.20, "threshold": 20.0}`
+      - `{"alert": "temperature_high", "temperature": 39.10, "threshold": 30.0}`
 - Connect local MQTT clients to the ESP32's IP on port 1883 (default MQTT port).
 
 ## OTA Updates
@@ -169,10 +191,14 @@ Edit `include/wifi_setup.h`:
 - `GET /`: Serves the main dashboard.
 - `GET /index`: Alias for dashboard.
 - `GET /style.css`: Serves CSS styles.
-- `GET /script.js`: Serves JavaScript (note: server maps to `/common.js`).
+- `GET /script.js`: Serves JavaScript.
 - `GET /update`: Serves the update form.
 - `POST /update`: Handles file uploads for OTA.
 - `GET /events`: SSE endpoint for real-time data.
+- `GET /readings`: Returns the latest sensor readings as JSON.
+- `GET /version`: Returns firmware version as JSON.
+- `GET /settings`: Returns `settings.json`.
+- `POST /settings`: Replaces `settings.json`.
 
 ## Known Issues
 
