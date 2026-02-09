@@ -193,6 +193,7 @@ namespace WifiSetup {
                 settings.save();
             }
             request->send(SPIFFS, "/settings.json", "application/json");
+            request->send(200, "application/json", settings.toJson());
         });
 
         // Settings file POST (replace existing file)

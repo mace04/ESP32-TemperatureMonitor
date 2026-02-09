@@ -3,6 +3,10 @@
 #include "mqtt_broker_wrapper.h"
 #include "lcd_display.h"
 #include "settings.h"
+#include "email_notifier.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
 #define BMP180
 
 
@@ -11,20 +15,57 @@ LocalMqttBroker mqtt;
 LCDDisplay lcd;  // I2C address 0x27 by default
 Settings settings;
 
+struct EmailRequest {
+  float temperature;
+  char status[16];
+};
+
+QueueHandle_t emailQueue = nullptr;
+TaskHandle_t emailTaskHandle = nullptr;
+
 unsigned long lastPublish = 0;
 const unsigned long publishIntervalMs = 2000;
 unsigned long lastTimeUpdate = 0;
 const unsigned long timeUpdateIntervalMs = 1000;  // Update time every 1 second
+unsigned long lastEmailSend = 0;
+const unsigned long emailIntervalMs = 15UL * 60UL * 1000UL;
 bool sensorInitialized = false;
 bool temperatureAboveThreshold = false;  // Track alert state for ready_to_print
 bool temperatureAboveHighThreshold = false;  // Track alert state for temperature_high
 bool temperatureBelowThreshold = false;  // Track alert state for temperature_low
+float lastTemperature = 0.0f;
+bool lastReadingValid = false;
+String lastStatus = "UNKNOWN";
 enum PrinterStatus{
   NOT_READY,
   READY,
   TOO_HOT
 } printerStatus;
 bool printerStatusChanged = false;
+
+void emailTask(void* param) {
+  EmailRequest request;
+  for (;;) {
+    if (xQueueReceive(emailQueue, &request, portMAX_DELAY) == pdTRUE) {
+      if (!EmailNotifier::sendStatusEmail(settings, request.temperature, request.status)) {
+        Serial.println("Email send attempt failed.");
+      }
+    }
+  }
+}
+
+bool enqueueEmail(float temperature, const char* status) {
+  if (!emailQueue) {
+    return false;
+  }
+
+  EmailRequest request;
+  request.temperature = temperature;
+  strncpy(request.status, status, sizeof(request.status) - 1);
+  request.status[sizeof(request.status) - 1] = '\0';
+
+  return xQueueSend(emailQueue, &request, 0) == pdTRUE;
+}
 
 void setup() {
   Serial.begin(115200);
@@ -56,6 +97,13 @@ void setup() {
 
   printerStatus = NOT_READY;
   mqtt.begin();
+
+  emailQueue = xQueueCreate(6, sizeof(EmailRequest));
+  if (emailQueue) {
+    xTaskCreatePinnedToCore(emailTask, "EmailTask", 8192, nullptr, 1, &emailTaskHandle, 0);
+  } else {
+    Serial.println("Failed to create email queue.");
+  }
 }
 
 void loop() {
@@ -84,6 +132,10 @@ void loop() {
       mqtt.publish("mqtt/sensor", payload.c_str());
       Serial.println(webPayload);
 
+      lastTemperature = temperature;
+      lastReadingValid = true;
+      lastStatus = statusStr;
+
       float readyThreshold = settings.getReadyToPrintThreshold();
       float highThreshold = settings.getHighTemperatureThreshold();
 
@@ -98,6 +150,10 @@ void loop() {
         Serial.print("Alert Published: ");
         Serial.println(alertPayload);
         printerStatus = NOT_READY;
+        if (!enqueueEmail(lastTemperature, "NOT READY")) {
+          Serial.println("Email enqueue failed.");
+        }
+
         printerStatusChanged = true;
       } else if (temperature >= readyThreshold && temperatureBelowThreshold) {
         // Temperature rose back above threshold - reset flag
@@ -115,6 +171,9 @@ void loop() {
         Serial.print("Alert Published: ");
         Serial.println(alertPayload);
         printerStatus = READY;
+        if (!enqueueEmail(lastTemperature, "READY")) {
+          Serial.println("Email enqueue failed.");
+        }
         printerStatusChanged = true;
       } else if (temperature < readyThreshold && temperatureAboveThreshold) {
         // Temperature fell back below threshold - reset flag
@@ -132,6 +191,9 @@ void loop() {
         Serial.print("High Temp Alert Published: ");
         Serial.println(alertPayload);
         printerStatus = TOO_HOT;
+        if (!enqueueEmail(lastTemperature, "TOO HOT")) {
+          Serial.println("Email enqueue failed.");
+        }
         printerStatusChanged = true;
       } else if (temperature < highThreshold && temperatureAboveHighThreshold) {
         // Temperature fell back below high threshold - reset flag
@@ -166,6 +228,16 @@ void loop() {
       lcd.displayError("Sensor Error");
     }
     mqtt.loop();
+  }
+
+  if (now - lastEmailSend >= emailIntervalMs) {
+    lastEmailSend = now;
+    if (lastReadingValid && !mqtt.hasSensorSubscribers() && WiFi.status() == WL_CONNECTED) {
+      Serial.println("Attempting to send email notification...");
+      if (!enqueueEmail(lastTemperature, lastStatus.c_str())) {
+        Serial.println("Email enqueue failed.");
+      }
+    }
   }
 
   // Update time every second
