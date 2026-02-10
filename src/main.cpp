@@ -82,10 +82,12 @@ void setup() {
     Serial.println("Settings initialization failed");
   }
 
+  WifiSetup::syncTimeWithNtp();
+
   WifiSetup::initWebServer();
 
   if (!sensor.begin()) {
-    Serial.println("Sesnor Initialisationt failed");
+    Serial.println("Sensor Initialization failed");
     lcd.displayError("Sensor Init Failed");
     // while (true) delay(1000);
   } else {

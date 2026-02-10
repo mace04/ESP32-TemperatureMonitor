@@ -5,6 +5,7 @@
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
 #include <Update.h>
+#include <time.h>
 #include "sensor.h"
 #include "lcd_display.h"
 #include "settings.h"
@@ -25,6 +26,26 @@ namespace WifiSetup {
     bool isUploading() {
         return uploadInProgress;
     }
+
+    void syncTimeWithNtp() {
+    configTime(0, 0, "pool.ntp.org", "time.nist.gov", "time.google.com");
+
+    const unsigned long start = millis();
+    const unsigned long timeoutMs = 10000;
+    time_t now = 0;
+
+    while ((millis() - start) < timeoutMs) {
+        time(&now);
+        if (now > 1609459200) {
+        Serial.println("NTP time synchronized.");
+        return;
+        }
+        delay(200);
+    }
+
+    Serial.println("NTP time sync timed out.");
+    }
+
 
     void handleGetUpdate(AsyncWebServerRequest *request) {
         File file = SPIFFS.open("/update.html", "r");
@@ -216,11 +237,17 @@ namespace WifiSetup {
 
                 if (file) {
                     file.write(data, len);
+                    Serial.printf("Received settings chunk: %u bytes (index %u, total %u)\n", len, index, total);
                 }
+
+                Serial.println();
+                Serial.println((char*) data);
+                Serial.println();
 
                 if (index + len == total) {
                     if (file) {
                         file.close();
+                        Serial.println("Settings file upload complete");
                     }
                     settings.load();
                 }

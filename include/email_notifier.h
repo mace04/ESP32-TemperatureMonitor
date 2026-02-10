@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <ESP_Mail_Client.h>
+#include <time.h>
 #include "settings.h"
 
 class EmailNotifier {
@@ -41,10 +42,20 @@ public:
     message.subject = "Temperature Monitor Status";
     message.addRecipient("Recipient", recipient);
 
+    char timeBuffer[32] = "unknown";
+    time_t now;
+    time(&now);
+    if (now > 1609459200) {
+        struct tm timeinfo;
+        if (gmtime_r(&now, &timeinfo)) {
+            strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S UTC", &timeinfo);
+        }
+    }
+
     char body[256];
     snprintf(body, sizeof(body),
-            "Status: %s\nTemperature: %.2f C\nTimestamp: %lu ms",
-            status, temperature, millis());
+            "Status: %s\nTemperature: %.2f C\nReading Time: %s",
+            status, temperature, timeBuffer);
 
     message.text.content = body;
     message.text.charSet = "us-ascii";
