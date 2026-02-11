@@ -1,9 +1,18 @@
 #pragma once
 
 #include <Arduino.h>
-#include <ESP_Mail_Client.h>
+#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
+#include <ESP_SSLClient.h>
+#define ENABLE_SMTP
+#include <ReadyMail.h>
 #include <time.h>
 #include "settings.h"
+
+static ESP_SSLClient* gStartTlsClient = nullptr;
+static void startTlsCallback(bool &success) {
+    success = gStartTlsClient && gStartTlsClient->connectSSL();
+}
 
 class EmailNotifier {
 public:
@@ -25,22 +34,16 @@ public:
         return false;
     }
 
-    SMTPSession smtp;
-    Session_Config config;
+    auto statusCallback = [](SMTPStatus status) {
+        Serial.println(status.text);
+    };
 
-    config.server.host_name = smtpHost;
-    config.server.port = settings.getSmtpPort();
-    config.secure.mode = settings.isSmtpSecure() ? esp_mail_secure_mode_ssl_tls : esp_mail_secure_mode_nonsecure;
-    config.secure.startTLS = (settings.getSmtpPort() == 587) || (settings.getSmtpPort() == 25);
-    config.login.email = smtpUser;
-    config.login.password = smtpPassword;
-    config.login.user_domain = "";
-
-    SMTP_Message message;
-    message.sender.name = senderName;
-    message.sender.email = senderEmail;
-    message.subject = "Temperature Monitor Status";
-    message.addRecipient("Recipient", recipient);
+    SMTPMessage message;
+    String fromHeader = String(senderName) + " <" + senderEmail + ">";
+    String toHeader = String("Recipient <") + recipient + ">";
+    message.headers.add(rfc822_from, fromHeader.c_str());
+    message.headers.add(rfc822_to, toHeader.c_str());
+    message.headers.add(rfc822_subject, "Temperature Monitor Status");
 
     char timeBuffer[32] = "unknown";
     time_t now;
@@ -57,21 +60,52 @@ public:
             "Status: %s\nTemperature: %.2f C\nReading Time: %s",
             status, temperature, timeBuffer);
 
-    message.text.content = body;
-    message.text.charSet = "us-ascii";
-    message.text.transfer_encoding = Content_Transfer_Encoding::enc_7bit;
+    message.text.body(body);
+    message.timestamp = time(nullptr);
 
-    if (!smtp.connect(&config)) {
-        Serial.println("SMTP connection failed.");
-        return false;
+    const uint16_t smtpPort = settings.getSmtpPort();
+    const bool useSecure = settings.isSmtpSecure();
+    bool sent = false;
+
+    if (useSecure) {
+        if (smtpPort == 587) {
+            WiFiClient basicClient;
+            ESP_SSLClient sslClient;
+            gStartTlsClient = &sslClient;
+            sslClient.setClient(&basicClient, false);
+            sslClient.setInsecure();
+            SMTPClient smtp(sslClient, startTlsCallback, true);
+            smtp.connect(smtpHost, smtpPort, statusCallback);
+            if (smtp.isConnected()) {
+                smtp.authenticate(smtpUser, smtpPassword, readymail_auth_password);
+                sent = smtp.send(message);
+            }
+            gStartTlsClient = nullptr;
+        } else {
+            WiFiClientSecure sslClient;
+            sslClient.setInsecure();
+            SMTPClient smtp(sslClient);
+            smtp.connect(smtpHost, smtpPort, statusCallback);
+            if (smtp.isConnected()) {
+                smtp.authenticate(smtpUser, smtpPassword, readymail_auth_password);
+                sent = smtp.send(message);
+            }
+        }
+    } else {
+        WiFiClient plainClient;
+        SMTPClient smtp(plainClient);
+        smtp.connect(smtpHost, smtpPort, statusCallback, false);
+        if (smtp.isConnected()) {
+            smtp.authenticate(smtpUser, smtpPassword, readymail_auth_password);
+            sent = smtp.send(message);
+        }
     }
 
-    if (!MailClient.sendMail(&smtp, &message)) {
+    if (!sent) {
         Serial.println("Failed to send email.");
         return false;
     }
 
-    smtp.closeSession();
     Serial.println("Email sent successfully.");
 
     return true;
