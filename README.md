@@ -1,10 +1,10 @@
 # ESP32 Temperature Monitor
 
-An IoT temperature and pressure monitoring system built on the ESP32 microcontroller using PlatformIO. This project integrates a BMP180 sensor for environmental readings, hosts a local MQTT broker, provides a web-based dashboard with real-time gauges, and supports over-the-air (OTA) updates for firmware and filesystem.
+An IoT temperature and pressure monitoring system built on the ESP32 microcontroller using PlatformIO. This project integrates a BMP180 sensor for environmental readings, hosts a local MQTT broker, provides a web-based dashboard with real-time gauges, sends email notifications on status changes, and supports over-the-air (OTA) updates for firmware and filesystem.
 
 ## Project Summary
 
-The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental sensing and data visualization. It automatically detects and interfaces with BMP180 or BME280 sensors to collect temperature, pressure, and humidity data. The device establishes WiFi connectivity for remote access, hosts its own MQTT broker for local data publishing, and serves a responsive web dashboard featuring real-time animated gauges. Real-time updates are delivered via Server-Sent Events (SSE), ensuring live data visualization without page refreshes. The system supports over-the-air (OTA) updates for both firmware and filesystem, enabling seamless remote maintenance. All web assets and configurations are stored in the ESP32's SPIFFS flash filesystem, making it a self-contained, standalone monitoring solution.
+The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental sensing and data visualization. It automatically detects and interfaces with BMP180 or BME280 sensors to collect temperature, pressure, and humidity data. The device establishes WiFi connectivity for remote access, hosts its own MQTT broker for local data publishing, and serves a responsive web dashboard featuring real-time animated gauges. Real-time updates are delivered via Server-Sent Events (SSE), ensuring live data visualization without page refreshes. The system supports over-the-air (OTA) updates for both firmware and filesystem, enabling seamless remote maintenance. It also syncs time via NTP for accurate timestamps and uses email alerts for printer readiness changes. All web assets and configurations are stored in the ESP32's SPIFFS flash filesystem, making it a self-contained, standalone monitoring solution.
 
 ## Table of Contents
 - [Features](#features)
@@ -26,6 +26,7 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 ### Core Capabilities
 - **Sensor Integration**: Automatically detects and reads environmental data from BMP180 (temperature), BME280 (temperature and humidity), or provides simulated data in debug mode. Readings are taken at configurable intervals (default: 2 seconds).
 - **WiFi Connectivity**: Connects to a specified WiFi network for remote access.
+- **WiFi Fallback Hotspot**: Starts a local AP if the primary WiFi connection fails.
 - **Local MQTT Broker**: Hosts an internal MQTT server for publishing sensor data and alerts.
 - **Web Dashboard**: Serves a responsive web interface with animated gauges, printer status, and camera stream support.
 - **Real-Time Updates**: Uses Server-Sent Events (SSE) to push live sensor readings and printer status to web clients.
@@ -33,6 +34,7 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 - **LCD Display (I2C 20x4)**: Shows temperature, humidity (if supported), IP address, printer status, and a live clock. The display updates efficiently (only when values change), and shows a dedicated message during firmware/filesystem uploads.
 - **SPIFFS Storage**: Stores web assets and configuration files in the ESP32's flash filesystem.
 - **Settings File**: Persists thresholds and camera URL in `/settings.json`, with automatic creation on first boot.
+- **Email Notifications**: Sends SMTP alerts on printer status changes and periodic status emails when no MQTT subscribers are connected.
 
 ### Sensor Capabilities
 - **Auto-Detection**: Automatically detects BMP180 or BME280 sensors on startup.
@@ -42,6 +44,7 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 
 ### Connectivity and Communication
 - **WiFi Management**: Robust WiFi connection handling with status monitoring.
+- **NTP Time Sync**: Syncs device time for accurate timestamps in email notifications.
 - **MQTT Publishing**: Publishes JSON-formatted sensor data to configurable MQTT topics.
 - **Server-Sent Events**: Real-time data streaming to web clients without polling.
 - **Web Server**: Asynchronous web server handling multiple concurrent connections.
@@ -128,14 +131,23 @@ Edit `include/wifi_setup.h`:
 - Adjust `publishIntervalMs` in `src/main.cpp` to change the reading interval (default: 2000ms).
 
 ### Settings File
-Stored in `/settings.json` on SPIFFS. Created automatically if missing.
+Stored in `/settings.json` on SPIFFS. Created automatically if missing. Includes thresholds, camera URL, and SMTP settings for email notifications.
 
 Example:
 ```
 {
    "ready_to_print_threshold": 20.0,
    "temperature_high_threshold": 30.0,
-   "camera_url": "http://192.168.0.18:8080/?action=stream"
+   "camera_url": "http://192.168.0.18:8080/?action=stream",
+   "email_enabled": true,
+   "smtp_host": "smtp.example.com",
+   "smtp_port": 587,
+   "smtp_secure": true,
+   "smtp_user": "user@example.com",
+   "smtp_password": "app-password",
+   "email_sender": "monitor@example.com",
+   "email_sender_name": "ESP32 Temp Monitor",
+   "email_recipient": "recipient@example.com"
 }
 ```
 
