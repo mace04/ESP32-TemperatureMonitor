@@ -28,7 +28,6 @@ const unsigned long publishIntervalMs = 2000;
 unsigned long lastTimeUpdate = 0;
 const unsigned long timeUpdateIntervalMs = 1000;  // Update time every 1 second
 unsigned long lastEmailSend = 0;
-const unsigned long emailIntervalMs = 15UL * 60UL * 1000UL;
 bool sensorInitialized = false;
 bool temperatureAboveThreshold = false;  // Track alert state for ready_to_print
 bool temperatureAboveHighThreshold = false;  // Track alert state for temperature_high
@@ -232,7 +231,7 @@ void loop() {
     mqtt.loop();
   }
 
-  if (now - lastEmailSend >= emailIntervalMs) {
+  if (now - lastEmailSend >= settings.getEmailIntervalMs()) {
     lastEmailSend = now;
     if (lastReadingValid && !mqtt.hasSensorSubscribers() && WiFi.status() == WL_CONNECTED) {
       Serial.println("Attempting to send email notification...");

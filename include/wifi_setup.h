@@ -213,7 +213,6 @@ namespace WifiSetup {
             if (!SPIFFS.exists("/settings.json")) {
                 settings.save();
             }
-            request->send(SPIFFS, "/settings.json", "application/json");
             request->send(200, "application/json", settings.toJson());
         });
 
