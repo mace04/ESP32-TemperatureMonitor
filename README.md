@@ -54,6 +54,7 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 - Logs readings to the serial console for debugging.
 - Structured data format: `{"temperature": 25.00, "humidity": 60.00}` (humidity only when available).
 - Emits printer status with SSE payloads for UI updates.
+- Sends periodic status emails every 15 minutes when enabled and no MQTT subscribers are connected.
 
 ### Web Interface
 - Temperature gauge: Linear display (0-40°C) with visual alerts.
@@ -140,6 +141,7 @@ Example:
    "temperature_high_threshold": 30.0,
    "camera_url": "http://192.168.0.18:8080/?action=stream",
    "email_enabled": true,
+   "email_interval_minutes": 15,
    "smtp_host": "smtp.example.com",
    "smtp_port": 587,
    "smtp_secure": true,
