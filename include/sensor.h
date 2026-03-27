@@ -2,6 +2,9 @@
 #include <Arduino.h>
 #include <Adafruit_BMP085.h>
 #include <Adafruit_BME280.h>
+#include "settings.h"
+
+extern Settings settings;
 
 enum SensorType {
   USE_BMP180,
@@ -13,7 +16,6 @@ class Sensor {
 public:
   SensorType sensorType;
   bool begin() {
-    Serial.begin(115200);
     if (bmp.begin()) {
       Serial.println("BMP085/BMP180 sensor found!");
       sensorType = USE_BMP180;
@@ -39,16 +41,27 @@ public:
       temperature = bme.readTemperature();
       humidity = bme.readHumidity();
     } else if(sensorType == USE_DEBUG) {
-      // Provide dummy values for debugging
+      const float upperBound = settings.getHighTemperatureThreshold() + 1.5f;
+      const float lowerBound = settings.getReadyToPrintThreshold() - 1.5f;
+      const float step = random(50, 151) / 100.0f;
+
       temperature = debug_temp;
       humidity = debug_hum;
-      static bool stabilised = false;
-      if(!stabilised && debug_temp < 20.0) {
-        debug_temp += random(1,50) / 100.00;
+
+      if (debugIncreasing) {
+        debug_temp += step;
+        if (debug_temp >= upperBound) {
+          debug_temp = upperBound;
+          debugIncreasing = false;
+        }
       } else {
-        stabilised = true;
+        debug_temp -= step;
+        if (debug_temp <= lowerBound) {
+          debug_temp = lowerBound;
+          debugIncreasing = true;
+        }
       }
-      if (stabilised) debug_temp += random(-40,40) / 100.00;
+
       debug_hum += random(-50,50) / 100.00;
     } else {
       return false;
@@ -80,7 +93,7 @@ public:
     }
     return String(F("{\"error\": \"Sensor read failed\"}"));
   }
-  String getJSONData(float& temperature, float& humidity) {
+  String getJSONData(float& temperature, float& humidity, bool fanState = false) {
     float t, h;
     static int debug_count = 0;
     String payload = String(F("{\"temperature\": ")) + String(temperature,2);
@@ -97,6 +110,7 @@ public:
         debug_count = 0;
       }
       payload += String(F(", \"isDebug\": true"));
+      payload += String(F(", \"fan\": ")) + (fanState ? "\"ON\"" : "\"OFF\"");
     }
     payload += F(" }");
     return payload;
@@ -106,4 +120,5 @@ private:
   Adafruit_BME280 bme;
   float debug_temp = 8.0;
   float debug_hum = 50.0;
+  bool debugIncreasing = true;
 };

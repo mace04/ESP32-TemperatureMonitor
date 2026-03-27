@@ -115,6 +115,14 @@ function getReadings(){
       var hum = myObj.humidity;
       gaugeTemp.value = temp;
       gaugeHum.value = hum;
+
+      if ('status' in myObj) {
+        updatePrinterStatus(myObj.status);
+      }
+
+      if ('fan' in myObj) {
+        updateFanStatus(myObj.fan);
+      }
     }
   }; 
   xhr.open("GET", "/readings", true);
@@ -201,6 +209,11 @@ if (!!window.EventSource) {
     if ('status' in myObj) {
       updatePrinterStatus(myObj.status);
     }
+
+    // Update fan status if included
+    if ('fan' in myObj) {
+      updateFanStatus(myObj.fan);
+    }
   }, false);
 }
 
@@ -228,5 +241,20 @@ function updatePrinterStatus(status) {
       statusElement.classList.add('not-ready');
       statusText.textContent = 'NOT READY';
       break;
+  }
+}
+
+function updateFanStatus(fan) {
+  const fanElement = document.getElementById('fan-status');
+  const fanText = fanElement.querySelector('.status-text');
+
+  fanElement.classList.remove('ready', 'too-hot');
+
+  if (fan === 'ON') {
+    fanElement.classList.add('too-hot');
+    fanText.textContent = 'FAN ON';
+  } else {
+    fanElement.classList.add('ready');
+    fanText.textContent = 'FAN OFF';
   }
 }

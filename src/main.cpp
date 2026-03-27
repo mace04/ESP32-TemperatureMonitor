@@ -23,6 +23,8 @@ struct EmailRequest {
 QueueHandle_t emailQueue = nullptr;
 TaskHandle_t emailTaskHandle = nullptr;
 
+constexpr uint8_t FAN_PIN = 4;
+
 unsigned long lastPublish = 0;
 const unsigned long publishIntervalMs = 2000;
 unsigned long lastTimeUpdate = 0;
@@ -35,12 +37,49 @@ bool temperatureBelowThreshold = false;  // Track alert state for temperature_lo
 float lastTemperature = 0.0f;
 bool lastReadingValid = false;
 String lastStatus = "UNKNOWN";
+volatile bool fanState = false;
+float fanMidpointThreshold = 0.0f;
+float fanOnThreshold = 0.0f;
+float fanOffThreshold = 0.0f;
+float cachedReadyThreshold = NAN;
+float cachedHighThreshold = NAN;
+float previousTemperatureForFanTrend = 0.0f;
+bool hasPreviousTemperatureForFanTrend = false;
+unsigned long lastFanIncreaseAlert = 0;
 enum PrinterStatus{
   NOT_READY,
   READY,
   TOO_HOT
 } printerStatus;
 bool printerStatusChanged = false;
+
+void recalculateFanThresholdsIfNeeded() {
+  float readyThreshold = settings.getReadyToPrintThreshold();
+  float highThreshold = settings.getHighTemperatureThreshold();
+
+  if (readyThreshold == cachedReadyThreshold && highThreshold == cachedHighThreshold) {
+    return;
+  }
+
+  cachedReadyThreshold = readyThreshold;
+  cachedHighThreshold = highThreshold;
+
+  fanMidpointThreshold = (readyThreshold + highThreshold) * 0.5f;
+  fanOnThreshold = fanMidpointThreshold + ((highThreshold - fanMidpointThreshold) * 0.65f);
+  fanOffThreshold = fanMidpointThreshold - ((fanMidpointThreshold - readyThreshold) * 0.35f);
+
+  Serial.printf("Fan thresholds recalculated. Midpoint: %.2f, ON: %.2f, OFF: %.2f\n",
+                fanMidpointThreshold,
+                fanOnThreshold,
+                fanOffThreshold);
+}
+
+bool setFanState(bool on) {
+  digitalWrite(FAN_PIN, on ? HIGH : LOW);
+  fanState = on;
+  Serial.printf("Fan state set to %s\n", on ? "ON" : "OFF");
+  return true;
+}
 
 void emailTask(void* param) {
   EmailRequest request;
@@ -81,6 +120,10 @@ void setup() {
     Serial.println("Settings initialization failed");
   }
 
+  pinMode(FAN_PIN, OUTPUT);
+  setFanState(false);
+  recalculateFanThresholdsIfNeeded();
+
   WifiSetup::syncTimeWithNtp();
 
   WifiSetup::initWebServer();
@@ -113,11 +156,34 @@ void loop() {
   
   if (now - lastPublish >= publishIntervalMs) {
     lastPublish = now;
+    recalculateFanThresholdsIfNeeded();
 
     float temperature, humidity;
     if (sensor.read(temperature, humidity)) {
 
-      String payload = sensor.getJSONData(temperature, humidity);
+      if (!fanState && temperature > fanOnThreshold) {
+        setFanState(true);
+      } else if (fanState && temperature < fanOffThreshold) {
+        setFanState(false);
+      }
+
+      if (fanState && hasPreviousTemperatureForFanTrend && temperature > previousTemperatureForFanTrend) {
+        unsigned long intervalMs = settings.getFanAlertIntervalMs();
+        if (now - lastFanIncreaseAlert >= intervalMs) {
+          String alertPayload = String(F("{\"alert\": \"fan_on_temperature_increasing\", \"temperature\": ")) +
+                                String(temperature, 2) + F(", \"previous_temperature\": ") +
+                                String(previousTemperatureForFanTrend, 2) + F(", \"fan\": \"on\"}");
+          mqtt.publish("mqtt/alert", alertPayload.c_str());
+          Serial.print("Fan Alert Published: ");
+          Serial.println(alertPayload);
+          lastFanIncreaseAlert = now;
+        }
+      }
+
+      previousTemperatureForFanTrend = temperature;
+      hasPreviousTemperatureForFanTrend = true;
+
+      String payload = sensor.getJSONData(temperature, humidity, fanState);
       
       // Add printer status to payload for web interface
       String statusStr = "NOT READY";
