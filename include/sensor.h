@@ -110,7 +110,6 @@ public:
         debug_count = 0;
       }
       payload += String(F(", \"isDebug\": true"));
-      payload += String(F(", \"fan\": ")) + (fanState ? "\"ON\"" : "\"OFF\"");
     }
     payload += String(F(", \"fan\": ")) + (fanState ? "\"ON\"" : "\"OFF\"");
     payload += F(" }");
