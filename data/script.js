@@ -117,7 +117,7 @@ function getReadings(){
       gaugeHum.value = hum;
 
       if ('status' in myObj) {
-        updatePrinterStatus(myObj.status);
+        updatePrinterStatus(myObj.status, myObj.filament);
       }
 
       if ('fan' in myObj) {
@@ -207,7 +207,7 @@ if (!!window.EventSource) {
     
     // Update printer status if included
     if ('status' in myObj) {
-      updatePrinterStatus(myObj.status);
+      updatePrinterStatus(myObj.status, myObj.filament);
     }
 
     // Update fan status if included
@@ -217,9 +217,10 @@ if (!!window.EventSource) {
   }, false);
 }
 
-function updatePrinterStatus(status) {
+function updatePrinterStatus(status, filament) {
   const statusElement = document.getElementById('printer-status');
   const statusText = statusElement.querySelector('.status-text');
+  const filamentSuffix = filament ? ` (${filament})` : '';
   
   // Remove all status classes
   statusElement.classList.remove('not-ready', 'ready', 'too-hot');
@@ -228,18 +229,18 @@ function updatePrinterStatus(status) {
   switch(status) {
     case 'READY':
       statusElement.classList.add('ready');
-      statusText.textContent = 'READY';
+      statusText.textContent = `READY${filamentSuffix}`;
       break;
     case 'TOO_HOT':
     case 'TOO HOT':
       statusElement.classList.add('too-hot');
-      statusText.textContent = 'TOO HOT';
+      statusText.textContent = `TOO HOT${filamentSuffix}`;
       break;
     case 'NOT_READY':
     case 'NOT READY':
     default:
       statusElement.classList.add('not-ready');
-      statusText.textContent = 'NOT READY';
+      statusText.textContent = `NOT READY${filamentSuffix}`;
       break;
   }
 }
