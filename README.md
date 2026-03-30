@@ -249,7 +249,7 @@ Fan-related settings:
 
 Note about web payloads:
 - Fan state is always available from `/fan`.
-- In current firmware, the `fan` field in sensor JSON payloads (`/readings` and SSE `sensor_data`) is present in debug-sensor mode.
+- In current firmware, the `fan` field in sensor JSON payloads (`/readings` and SSE `sensor_data`) is always present and reflects the current fan state.
 
 ## Known Issues
 
