@@ -4,7 +4,7 @@ An IoT temperature and pressure monitoring system built on the ESP32 microcontro
 
 ## Project Summary
 
-The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental sensing and data visualization. It automatically detects and interfaces with BMP180 or BME280 sensors to collect temperature, pressure, and humidity data. The device establishes WiFi connectivity for remote access, hosts its own MQTT broker for local data publishing, and serves a responsive web dashboard featuring real-time animated gauges. Real-time updates are delivered via Server-Sent Events (SSE), ensuring live data visualization without page refreshes. The system supports over-the-air (OTA) updates for both firmware and filesystem, enabling seamless remote maintenance. It also syncs time via NTP for accurate timestamps and uses email alerts for printer readiness changes. All web assets and configurations are stored in the ESP32's SPIFFS flash filesystem, making it a self-contained, standalone monitoring solution.
+The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental sensing and data visualization. It automatically detects and interfaces with BMP180 or BME280 sensors to collect temperature, pressure, and humidity data. The device establishes WiFi connectivity for remote access, hosts its own MQTT broker for local data publishing, and serves a responsive web dashboard featuring real-time animated gauges. Real-time updates are delivered via Server-Sent Events (SSE), ensuring live data visualization without page refreshes. The system supports over-the-air (OTA) updates for both firmware and filesystem, enabling seamless remote maintenance. It also syncs time via NTP for accurate timestamps, uses email alerts for printer readiness changes, and controls a fan connected to GPIO04 based on dynamic temperature thresholds. All web assets and configurations are stored in the ESP32's SPIFFS flash filesystem, making it a self-contained, standalone monitoring solution.
 
 ## Table of Contents
 - [Features](#features)
@@ -35,11 +35,16 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 - **SPIFFS Storage**: Stores web assets and configuration files in the ESP32's flash filesystem.
 - **Settings File**: Persists thresholds and camera URL in `/settings.json`, with automatic creation on first boot.
 - **Email Notifications**: Sends SMTP alerts on printer status changes and periodic status emails when no MQTT subscribers are connected.
+- **Fan Control**: Controls a fan on GPIO04 using dynamic hysteresis thresholds derived from printer thresholds and exposes HTTP control/status endpoints.
+- **Fan Temperature-Rise Alert**: Publishes a dedicated MQTT warning when the fan is running and temperature is still rising.
 
 ### Sensor Capabilities
 - **Auto-Detection**: Automatically detects BMP180 or BME280 sensors on startup.
 - **Multi-Sensor Support**: Compatible with BMP180 (temperature and pressure) and BME280 (temperature, humidity, and pressure).
-- **Debug Mode**: Provides simulated sensor data when no physical sensor is detected, useful for development and testing.
+- **Debug Mode**: Provides simulated sensor data when no physical sensor is detected, useful for development and testing. Debug temperature now follows a cyclic ramp:
+   - Increases by a random step between `0.5` and `1.5` °C per reading until it reaches `temperature_high_threshold + 1.5`.
+   - Then decreases by a random step between `0.5` and `1.5` °C per reading until it reaches `ready_to_print_threshold - 1.5`.
+   - Then repeats the same increase/decrease cycle continuously.
 - **Configurable Sampling**: Adjustable reading interval (default: 2 seconds) for balancing responsiveness and power consumption.
 
 ### Connectivity and Communication
@@ -55,6 +60,7 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 - Structured data format: `{"temperature": 25.00, "humidity": 60.00}` (humidity only when available).
 - Emits printer status with SSE payloads for UI updates.
 - Sends periodic status emails every 15 minutes when enabled and no MQTT subscribers are connected.
+- Fan rise alert interval is configurable through `fan_alert_interval_minutes` in `/settings.json`.
 
 ### Web Interface
 - Temperature gauge: Linear display (0-40°C) with visual alerts.
@@ -74,6 +80,7 @@ The ESP32 Temperature Monitor is a comprehensive IoT solution for environmental 
 - ESP32 DevKit v1 (or compatible board)
 - BMP180 temperature and pressure sensor (connected via I2C)
 - 20x4 I2C LCD display (typical address 0x27 or 0x3F)
+- Fan connected to GPIO04 through a suitable driver stage (for example, transistor/MOSFET + external fan supply)
 - USB cable for programming and power
 - Optional: External power supply for standalone operation
 
@@ -130,6 +137,7 @@ Edit `include/wifi_setup.h`:
 ### Sensor Settings
 - The BMP180 sensor is configured for default I2C pins (SDA: GPIO 21, SCL: GPIO 22 on ESP32).
 - Adjust `publishIntervalMs` in `src/main.cpp` to change the reading interval (default: 2000ms).
+- In debug mode, `ready_to_print_threshold` and `temperature_high_threshold` also control the simulated temperature bounds described above.
 
 ### Settings File
 Stored in `/settings.json` on SPIFFS. Created automatically if missing. Includes thresholds, camera URL, and SMTP settings for email notifications.
@@ -149,9 +157,13 @@ Example:
    "smtp_password": "app-password",
    "email_sender": "monitor@example.com",
    "email_sender_name": "ESP32 Temp Monitor",
-   "email_recipient": "recipient@example.com"
+   "email_recipient": "recipient@example.com",
+   "fan_alert_interval_minutes": 1
 }
 ```
+
+Fan-related settings:
+- `fan_alert_interval_minutes`: Minimum interval between repeated `fan_on_temperature_increasing` MQTT alerts while fan is ON and temperature is rising.
 
 ### Partition Scheme
 - Uses `default_1.5MBapp_spiffs768KB.csv` for 1.5MB app space and 768KB SPIFFS.
@@ -173,6 +185,19 @@ Example:
 - Printer status updates when thresholds are crossed.
 - During OTA uploads, the LCD shows "Uploading firmware" or "Uploading filesystem" and suppresses other updates.
 
+### Fan Control Behavior
+- Fan pin: `GPIO04`.
+- Fan default state on boot: `OFF`.
+- Thresholds are recalculated whenever `ready_to_print_threshold` or `temperature_high_threshold` changes:
+   - `midpoint = (ready_to_print_threshold + temperature_high_threshold) / 2`
+   - `fan_on_threshold = midpoint + ((temperature_high_threshold - midpoint) * 0.65)`
+   - `fan_off_threshold = midpoint - ((midpoint - ready_to_print_threshold) * 0.35)`
+- Control logic:
+   - Fan turns ON when `temperature > fan_on_threshold`.
+   - Fan turns OFF when `temperature < fan_off_threshold`.
+- While fan is ON, if the current temperature is greater than the previous reading, the firmware publishes `fan_on_temperature_increasing` alerts to MQTT topic `mqtt/alert`, limited by `fan_alert_interval_minutes`.
+- `POST /fan` can force fan ON/OFF, but automatic loop logic may override it on subsequent sensor updates depending on temperature.
+
 ### Serial Output
 - Monitors connection status, sensor readings, and errors.
 
@@ -191,6 +216,8 @@ Example:
       - `{"alert": "temperature_low", "temperature": 18.50, "threshold": 20.0}`
       - `{"alert": "ready_to_print", "temperature": 21.20, "threshold": 20.0}`
       - `{"alert": "temperature_high", "temperature": 39.10, "threshold": 30.0}`
+- **Fan Alert Topic**: `mqtt/alert`
+   - Payload: `{"alert": "fan_on_temperature_increasing", "temperature": 66.20, "previous_temperature": 65.80, "fan": "on"}`
 - Connect local MQTT clients to the ESP32's IP on port 1883 (default MQTT port).
 
 ## OTA Updates
@@ -213,6 +240,16 @@ Example:
 - `GET /version`: Returns firmware version as JSON.
 - `GET /settings`: Returns `settings.json`.
 - `POST /settings`: Replaces `settings.json`.
+- `GET /fan`: Returns current fan state as JSON boolean text:
+   - Example: `{"fan_active": "true"}` or `{"fan_active": "false"}`
+- `POST /fan`: Sets fan state.
+   - Accepted `state` values: `on`, `off`
+   - `state` may be sent as a query parameter or form parameter.
+   - Example: `POST /fan?state=on`
+
+Note about web payloads:
+- Fan state is always available from `/fan`.
+- In current firmware, the `fan` field in sensor JSON payloads (`/readings` and SSE `sensor_data`) is always present and reflects the current fan state.
 
 ## Known Issues
 

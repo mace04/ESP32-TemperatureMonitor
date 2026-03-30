@@ -17,6 +17,7 @@
 #define DEFAULT_EMAIL_SENDER "sensors@gmail.com"
 #define DEFAULT_EMAIL_SENDER_NAME "ESP32 Temp Monitor"
 #define DEFAULT_EMAIL_RECIPIENT "michael@m-software.co.uk"
+#define DEFAULT_FAN_ALERT_INTERVAL_MINUTES 1
 
 class Settings {
 public:
@@ -41,6 +42,7 @@ public:
         doc["email_sender"] = emailSender;
         doc["email_sender_name"] = emailSenderName;
         doc["email_recipient"] = emailRecipient;
+        doc["fan_alert_interval_minutes"] = fanAlertIntervalMinutes;
 
         if (serializeJson(doc, file) == 0) {
             Serial.println("Failed to write settings file");
@@ -87,6 +89,7 @@ public:
         emailSender = doc["email_sender"] | DEFAULT_EMAIL_SENDER;
         emailSenderName = doc["email_sender_name"] | DEFAULT_EMAIL_SENDER_NAME;
         emailRecipient = doc["email_recipient"] | DEFAULT_EMAIL_RECIPIENT;
+        fanAlertIntervalMinutes = doc["fan_alert_interval_minutes"] | DEFAULT_FAN_ALERT_INTERVAL_MINUTES;
         return true;
     }  
 
@@ -117,6 +120,14 @@ public:
     const char* getEmailSender() const { return emailSender.c_str(); }
     const char* getEmailSenderName() const { return emailSenderName.c_str(); }
     const char* getEmailRecipient() const { return emailRecipient.c_str(); }
+    uint16_t getFanAlertIntervalMinutes() const { return fanAlertIntervalMinutes; }
+    unsigned long getFanAlertIntervalMs() const {
+        uint16_t minutes = fanAlertIntervalMinutes;
+        if (minutes == 0) {
+            minutes = DEFAULT_FAN_ALERT_INTERVAL_MINUTES;
+        }
+        return static_cast<unsigned long>(minutes) * 60UL * 1000UL;
+    }
 
     String toJson() const {
         StaticJsonDocument<768> doc;
@@ -133,6 +144,7 @@ public:
         doc["email_sender"] = emailSender;
         doc["email_sender_name"] = emailSenderName;
         doc["email_recipient"] = emailRecipient;
+        doc["fan_alert_interval_minutes"] = fanAlertIntervalMinutes;
 
         String json;
         serializeJson(doc, json);
@@ -152,6 +164,7 @@ public:
     void setEmailSender(const String& value) { emailSender = value; }
     void setEmailSenderName(const String& value) { emailSenderName = value; }
     void setEmailRecipient(const String& value) { emailRecipient = value; }
+    void setFanAlertIntervalMinutes(uint16_t value) { fanAlertIntervalMinutes = value; }
 private:
     float readyToPrintThreshold = DEFAULT_READY_THRESHOLD;
     float highTemperatureThreshold = DEFAULT_HIGH_THRESHOLD;
@@ -166,5 +179,6 @@ private:
     String emailSender = DEFAULT_EMAIL_SENDER;
     String emailSenderName = DEFAULT_EMAIL_SENDER_NAME;
     String emailRecipient = DEFAULT_EMAIL_RECIPIENT;
+    uint16_t fanAlertIntervalMinutes = DEFAULT_FAN_ALERT_INTERVAL_MINUTES;
     const char* filePath = "/settings.json";
 };

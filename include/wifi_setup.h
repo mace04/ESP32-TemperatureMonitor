@@ -13,6 +13,8 @@
 extern Sensor sensor;
 extern LCDDisplay lcd;
 extern Settings settings;
+extern volatile bool fanState;
+bool setFanState(bool on);
 
 namespace WifiSetup {
     const char* SSID = "SKYPGFYX";
@@ -258,6 +260,32 @@ namespace WifiSetup {
             String json = sensor.getJSONData ();
             request->send(200, "application/json", json);
             json = String();
+        });
+
+        server.on("/fan", HTTP_GET, [](AsyncWebServerRequest *request) {
+            String fan = fanState ? "true" : "false";
+            String response = String(F("{\"fan_active\": \"")) + fan + F("\"}");
+            request->send(200, "application/json", response);
+        });
+
+        server.on("/fan", HTTP_POST, [](AsyncWebServerRequest *request) {
+            String state;
+            if (request->hasParam("state", true)) {
+                state = request->getParam("state", true)->value();
+            } else if (request->hasParam("state")) {
+                state = request->getParam("state")->value();
+            }
+
+            state.toLowerCase();
+            if (state != "on" && state != "off") {
+                request->send(400, "application/json", "{\"error\":\"state must be on or off\"}");
+                return;
+            }
+
+            bool on = (state == "on");
+            setFanState(on);
+            String response = String(F("{\"fan_active\": \"")) + (on ? "true" : "false") + F("\"}");
+            request->send(200, "application/json", response);
         });
 
         // Serve firmware version
