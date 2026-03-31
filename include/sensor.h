@@ -3,8 +3,10 @@
 #include <Adafruit_BMP085.h>
 #include <Adafruit_BME280.h>
 #include "settings.h"
+#include "filament_manager.h"
 
 extern Settings settings;
+extern FilamentManager filamentManager;
 
 enum SensorType {
   USE_BMP180,
@@ -41,8 +43,8 @@ public:
       temperature = bme.readTemperature();
       humidity = bme.readHumidity();
     } else if(sensorType == USE_DEBUG) {
-      const float upperBound = settings.getHighTemperatureThreshold() + 1.5f;
-      const float lowerBound = settings.getReadyToPrintThreshold() - 1.5f;
+      const float upperBound = filamentManager.current().highest_temperature + 10.0f;
+      const float lowerBound = filamentManager.current().lowest_temperature - 1.5f;
       const float step = random(50, 151) / 100.0f;
 
       temperature = debug_temp;
