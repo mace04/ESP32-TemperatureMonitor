@@ -40,6 +40,7 @@ float lastTemperature = 0.0f;
 bool lastReadingValid = false;
 String lastStatus = "UNKNOWN";
 volatile bool fanState = false;
+String lastFilament = "";
 float previousTemperatureForFanTrend = 0.0f;
 bool hasPreviousTemperatureForFanTrend = false;
 unsigned long lastFanIncreaseAlert = 0;
@@ -114,7 +115,7 @@ void setup() {
     sensorInitialized = true;
     // Display humidity status once at startup
     bool isBME280 = (sensor.sensorType == USE_BME280);
-    lcd.displayHumidityStatus(isBME280);
+    lcd.displayHumidityStatus(isBME280, filamentManager.currentName().c_str());
   }
 
   printerStatus = NOT_READY;
@@ -139,14 +140,14 @@ void loop() {
     temperatureAboveHighThreshold = false;
     filamentSelectionDisplayActive = true;
     filamentDisplayUntil = now + 3000;
-    lcd.displaySelectedFilament(filamentManager.currentName().c_str());
+    // lcd.displaySelectedFilament(filamentManager.currentName().c_str());
     Serial.printf("Filament changed to %s, resetting threshold states\n",
                   filamentManager.currentName().c_str());
   }
 
-  if (filamentSelectionDisplayActive && now >= filamentDisplayUntil) {
-    filamentSelectionDisplayActive = false;
-    printerStatusChanged = true;
+  if(!lastFilament.equals(filamentManager.currentName())) {
+    lastFilament = filamentManager.currentName();
+    lcd.displayHumidityStatus(false, filamentManager.currentName().c_str());
   }
 
   if (now - lastPublish >= publishIntervalMs) {
@@ -265,7 +266,7 @@ void loop() {
             lcd.updateTemperature(temperature);
             lcd.updateHumidity(humidity, isBME280);
             if (filamentSelectionDisplayActive) {
-              lcd.displaySelectedFilament(filamentManager.currentName().c_str());
+              // lcd.displaySelectedFilament(filamentManager.currentName().c_str());
             } else if (printerStatusChanged){
               printerStatusChanged = false;
               if (printerStatus == READY) {
