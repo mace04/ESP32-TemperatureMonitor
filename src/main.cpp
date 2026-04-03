@@ -45,7 +45,6 @@ float previousTemperatureForFanTrend = 0.0f;
 bool hasPreviousTemperatureForFanTrend = false;
 unsigned long lastFanIncreaseAlert = 0;
 unsigned long filamentDisplayUntil = 0;
-bool filamentSelectionDisplayActive = false;
 enum PrinterStatus{
   NOT_READY,
   READY,
@@ -138,9 +137,7 @@ void loop() {
     temperatureBelowThreshold = false;
     temperatureAboveThreshold = false;
     temperatureAboveHighThreshold = false;
-    filamentSelectionDisplayActive = true;
     filamentDisplayUntil = now + 3000;
-    // lcd.displaySelectedFilament(filamentManager.currentName().c_str());
     Serial.printf("Filament changed to %s, resetting threshold states\n",
                   filamentManager.currentName().c_str());
   }
@@ -265,9 +262,7 @@ void loop() {
             bool isBME280 = (sensor.sensorType == USE_BME280);
             lcd.updateTemperature(temperature);
             lcd.updateHumidity(humidity, isBME280);
-            if (filamentSelectionDisplayActive) {
-              // lcd.displaySelectedFilament(filamentManager.currentName().c_str());
-            } else if (printerStatusChanged){
+            if (printerStatusChanged){
               printerStatusChanged = false;
               if (printerStatus == READY) {
                 lcd.updateStatus("READY");  // Refresh to show ready status

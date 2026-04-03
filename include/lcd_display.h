@@ -139,23 +139,6 @@ public:
     lcd.print("Please wait...");
   }
 
-  void displaySelectedFilament(const char* filamentName) {
-    lcd.setCursor(0, 2);
-    lcd.print("                    ");
-    lcd.setCursor(0, 2);
-    lcd.print("Selected Filament");
-
-    lcd.setCursor(0, 3);
-    lcd.print("                    ");
-    lcd.setCursor(0, 3);
-    lcd.print("Type: ");
-    if (filamentName && filamentName[0] != '\0') {
-      lcd.print(filamentName);
-    } else {
-      lcd.print("UNKNOWN");
-    }
-  }
-
 private:
   LiquidCrystal_I2C lcd;
   float lastTemp;
