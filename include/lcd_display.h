@@ -83,11 +83,21 @@ public:
     }
   }
 
-  // Display humidity sensor status (called once or when sensor type changes)
-  void displayHumidityStatus(bool isBME280) {
+  // Display humidity sensor status or selected filament (called once or when sensor type changes)
+  void displayHumidityStatus(bool isBME280, const char* filamentName = nullptr) {
     if (!isBME280) {
       lcd.setCursor(0, 1);
-      lcd.print("(No Humidity Sensor)");
+      String output = "Filament: ";
+      if (filamentName && filamentName[0] != '\0') {
+        output += filamentName;
+      } else {
+        output += "UNKNOWN";
+      }
+      // Pad with spaces to fill the 20-character line
+      while (output.length() < 20) {
+        output += " ";
+      }
+      lcd.print(output);
     }
   }
 

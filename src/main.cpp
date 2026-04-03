@@ -4,6 +4,7 @@
 #include "lcd_display.h"
 #include "settings.h"
 #include "email_notifier.h"
+#include "filament_manager.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
@@ -14,6 +15,7 @@ Sensor sensor;
 LocalMqttBroker mqtt;
 LCDDisplay lcd;  // I2C address 0x27 by default
 Settings settings;
+FilamentManager filamentManager;
 
 struct EmailRequest {
   float temperature;
@@ -38,41 +40,17 @@ float lastTemperature = 0.0f;
 bool lastReadingValid = false;
 String lastStatus = "UNKNOWN";
 volatile bool fanState = false;
-float fanMidpointThreshold = 0.0f;
-float fanOnThreshold = 0.0f;
-float fanOffThreshold = 0.0f;
-float cachedReadyThreshold = NAN;
-float cachedHighThreshold = NAN;
+String lastFilament = "";
 float previousTemperatureForFanTrend = 0.0f;
 bool hasPreviousTemperatureForFanTrend = false;
 unsigned long lastFanIncreaseAlert = 0;
+unsigned long filamentDisplayUntil = 0;
 enum PrinterStatus{
   NOT_READY,
   READY,
   TOO_HOT
 } printerStatus;
 bool printerStatusChanged = false;
-
-void recalculateFanThresholdsIfNeeded() {
-  float readyThreshold = settings.getReadyToPrintThreshold();
-  float highThreshold = settings.getHighTemperatureThreshold();
-
-  if (readyThreshold == cachedReadyThreshold && highThreshold == cachedHighThreshold) {
-    return;
-  }
-
-  cachedReadyThreshold = readyThreshold;
-  cachedHighThreshold = highThreshold;
-
-  fanMidpointThreshold = (readyThreshold + highThreshold) * 0.5f;
-  fanOnThreshold = fanMidpointThreshold + ((highThreshold - fanMidpointThreshold) * 0.65f);
-  fanOffThreshold = fanMidpointThreshold - ((fanMidpointThreshold - readyThreshold) * 0.35f);
-
-  Serial.printf("Fan thresholds recalculated. Midpoint: %.2f, ON: %.2f, OFF: %.2f\n",
-                fanMidpointThreshold,
-                fanOnThreshold,
-                fanOffThreshold);
-}
 
 bool setFanState(bool on) {
   digitalWrite(FAN_PIN, on ? HIGH : LOW);
@@ -122,7 +100,7 @@ void setup() {
 
   pinMode(FAN_PIN, OUTPUT);
   setFanState(false);
-  recalculateFanThresholdsIfNeeded();
+  filamentManager.begin();
 
   WifiSetup::syncTimeWithNtp();
 
@@ -136,7 +114,7 @@ void setup() {
     sensorInitialized = true;
     // Display humidity status once at startup
     bool isBME280 = (sensor.sensorType == USE_BME280);
-    lcd.displayHumidityStatus(isBME280);
+    lcd.displayHumidityStatus(isBME280, filamentManager.currentName().c_str());
   }
 
   printerStatus = NOT_READY;
@@ -153,17 +131,31 @@ void setup() {
 void loop() {
   unsigned long now = millis();
   bool uploading = WifiSetup::isUploading();
-  
+
+  filamentManager.update();
+  if (filamentManager.consumeChange()) {
+    temperatureBelowThreshold = false;
+    temperatureAboveThreshold = false;
+    temperatureAboveHighThreshold = false;
+    filamentDisplayUntil = now + 3000;
+    Serial.printf("Filament changed to %s, resetting threshold states\n",
+                  filamentManager.currentName().c_str());
+  }
+
+  if(!lastFilament.equals(filamentManager.currentName())) {
+    lastFilament = filamentManager.currentName();
+    lcd.displayHumidityStatus(false, filamentManager.currentName().c_str());
+  }
+
   if (now - lastPublish >= publishIntervalMs) {
     lastPublish = now;
-    recalculateFanThresholdsIfNeeded();
 
     float temperature, humidity;
     if (sensor.read(temperature, humidity)) {
 
-      if (!fanState && temperature > fanOnThreshold) {
+      if (!fanState && filamentManager.shouldFanTurnOn(temperature)) {
         setFanState(true);
-      } else if (fanState && temperature < fanOffThreshold) {
+      } else if (fanState && filamentManager.shouldFanTurnOff(temperature)) {
         setFanState(false);
       }
 
@@ -193,7 +185,9 @@ void loop() {
       // Create enhanced payload with status
       String webPayload = payload;
       webPayload.remove(webPayload.length() - 2); // Remove closing brace and space
-      webPayload += String(F(", \"status\": \"")) + statusStr + F("\" }");
+      webPayload += String(F(", \"status\": \"")) + statusStr +
+            String(F("\", \"filament\": \"")) + filamentManager.currentName() +
+            + F("\" }");
       
       WifiSetup::events.send(webPayload.c_str(), "sensor_data", millis());
       mqtt.publish("mqtt/sensor", payload.c_str());
@@ -203,16 +197,12 @@ void loop() {
       lastReadingValid = true;
       lastStatus = statusStr;
 
-      float readyThreshold = settings.getReadyToPrintThreshold();
-      float highThreshold = settings.getHighTemperatureThreshold();
-
-      // Check for temperature threshold not reached (temperature_low)
-      if (temperature < readyThreshold && !temperatureBelowThreshold) {
-        // Temperature just fell below threshold
+      // Check for temperature not ready (below lowest_temperature of selected filament)
+      if (!filamentManager.isReadyToPrint(temperature) && !filamentManager.isTooHot(temperature) && !temperatureBelowThreshold) {
         temperatureBelowThreshold = true;
         String alertPayload = String(F("{\"alert\": \"temperature_low\", \"temperature\": ")) + 
                             String(temperature, 2) + F(", \"threshold\": ") + 
-                            String(readyThreshold, 1) + F("}");
+                            String(filamentManager.current().lowest_temperature, 1) + F("}");
         mqtt.publish("mqtt/alerts", alertPayload.c_str());
         Serial.print("Alert Published: ");
         Serial.println(alertPayload);
@@ -220,20 +210,17 @@ void loop() {
         if (!enqueueEmail(lastTemperature, "NOT READY")) {
           Serial.println("Email enqueue failed.");
         }
-
         printerStatusChanged = true;
-      } else if (temperature >= readyThreshold && temperatureBelowThreshold) {
-        // Temperature rose back above threshold - reset flag
+      } else if ((filamentManager.isReadyToPrint(temperature) || filamentManager.isTooHot(temperature)) && temperatureBelowThreshold) {
         temperatureBelowThreshold = false;
       }
 
-      // Check for temperature threshold crossing (ready_to_print)
-      if (temperature >= readyThreshold && temperature < highThreshold && (!temperatureAboveThreshold || temperatureAboveHighThreshold)) {
-        // Temperature just crossed above threshold
+      // Check for ready to print (over lowest_temperature and below highest_temperature)
+      if (filamentManager.isReadyToPrint(temperature) && (!temperatureAboveThreshold || temperatureAboveHighThreshold)) {
         temperatureAboveThreshold = true;
         String alertPayload = String(F("{\"alert\": \"ready_to_print\", \"temperature\": ")) + 
                             String(temperature, 2) + F(", \"threshold\": ") + 
-                            String(readyThreshold, 1) + F("}");
+                            String(filamentManager.current().lowest_temperature, 1) + F("}");
         mqtt.publish("mqtt/alerts", alertPayload.c_str());
         Serial.print("Alert Published: ");
         Serial.println(alertPayload);
@@ -242,18 +229,16 @@ void loop() {
           Serial.println("Email enqueue failed.");
         }
         printerStatusChanged = true;
-      } else if (temperature < readyThreshold && temperatureAboveThreshold) {
-        // Temperature fell back below threshold - reset flag
+      } else if (!filamentManager.isReadyToPrint(temperature) && temperatureAboveThreshold) {
         temperatureAboveThreshold = false;
       }
-      
-      // Check for high temperature threshold crossing (temperature_high)
-      if (temperature >= highThreshold && !temperatureAboveHighThreshold) {
-        // Temperature just crossed above high threshold
+
+      // Check for too hot (over highest_temperature of selected filament)
+      if (filamentManager.isTooHot(temperature) && !temperatureAboveHighThreshold) {
         temperatureAboveHighThreshold = true;
         String alertPayload = String(F("{\"alert\": \"temperature_high\", \"temperature\": ")) + 
                             String(temperature, 2) + F(", \"threshold\": ") + 
-                            String(highThreshold, 1) + F("}");
+                            String(filamentManager.current().highest_temperature, 1) + F("}");
         mqtt.publish("mqtt/alerts", alertPayload.c_str());
         Serial.print("High Temp Alert Published: ");
         Serial.println(alertPayload);
@@ -262,8 +247,7 @@ void loop() {
           Serial.println("Email enqueue failed.");
         }
         printerStatusChanged = true;
-      } else if (temperature < highThreshold && temperatureAboveHighThreshold) {
-        // Temperature fell back below high threshold - reset flag
+      } else if (!filamentManager.isTooHot(temperature) && temperatureAboveHighThreshold) {
         temperatureAboveHighThreshold = false;
       }
 

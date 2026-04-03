@@ -8,12 +8,15 @@
 #include <time.h>
 #include "sensor.h"
 #include "lcd_display.h"
+#include "filament_manager.h"
 #include "settings.h"
 
 extern Sensor sensor;
 extern LCDDisplay lcd;
+extern FilamentManager filamentManager;
 extern Settings settings;
 extern volatile bool fanState;
+extern String lastStatus;
 bool setFanState(bool on);
 
 namespace WifiSetup {
@@ -258,6 +261,9 @@ namespace WifiSetup {
         // Request for the latest sensor readings
         server.on("/readings", HTTP_GET, [](AsyncWebServerRequest *request){
             String json = sensor.getJSONData ();
+            json.remove(json.length() - 2);
+            json += String(F(", \"status\": \"")) + lastStatus +
+                    String(F("\", \"filament\": \"")) + filamentManager.currentName() + F("\" }");
             request->send(200, "application/json", json);
             json = String();
         });

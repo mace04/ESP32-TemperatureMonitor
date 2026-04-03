@@ -1,0 +1,20 @@
+[
+    {
+        "name": "PLA",
+        "lowest_temperature": 18,
+        "highest_temperature": 32,
+        "optimum_temperature": 26
+    },
+    {
+        "name": "PLA+",
+        "lowest_temperature": 20,
+        "highest_temperature": 40,
+        "optimum_temperature": 31
+    },
+    {
+        "name": "PETG",
+        "lowest_temperature": 25,
+        "highest_temperature": 50,
+        "optimum_temperature": 45
+    }
+]
