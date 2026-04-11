@@ -88,6 +88,11 @@ public:
 
     size_t profileCount() const { return _profiles.size(); }
 
+    // Advance to the next filament profile (simulates a button press)
+    void cycle() {
+        cycleFilament();
+    }
+
 private:
     std::vector<FilamentProfile> _profiles;
     size_t _currentIndex = 0;

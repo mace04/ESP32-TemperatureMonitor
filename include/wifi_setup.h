@@ -268,6 +268,17 @@ namespace WifiSetup {
             json = String();
         });
 
+        server.on("/filament", HTTP_GET, [](AsyncWebServerRequest *request) {
+            String json = String(F("{\"filament\": \"")) + filamentManager.currentName() + F("\"}" );
+            request->send(200, "application/json", json);
+        });
+
+        server.on("/filament", HTTP_POST, [](AsyncWebServerRequest *request) {
+            filamentManager.cycle();
+            String json = String(F("{\"filament\": \"")) + filamentManager.currentName() + F("\"}" );
+            request->send(200, "application/json", json);
+        });
+
         server.on("/fan", HTTP_GET, [](AsyncWebServerRequest *request) {
             String fan = fanState ? "true" : "false";
             String response = String(F("{\"fan_active\": \"")) + fan + F("\"}");
