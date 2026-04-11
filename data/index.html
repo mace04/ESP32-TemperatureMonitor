@@ -18,9 +18,10 @@
     <div class="content">
       <div class="status-card">
         <h2>3D Printer Environment Status</h2>
-        <div id="printer-status" class="status-display not-ready">
+        <div id="printer-status" class="status-display not-ready" title="Click to change filament" style="cursor: pointer;">
           <span class="status-text">NOT READY</span>
         </div>
+        <div style="margin-top: 8px; color: #666; font-size: 0.9rem;">Click status to change filament</div>
         <div id="fan-status" class="status-display ready" style="margin-top: 12px;">
           <span class="status-text">FAN OFF</span>
         </div>
@@ -48,6 +49,30 @@
     </div>
     <script src="script.js"></script>
     <script>
+      // Click printer status to cycle filament profile
+      (function () {
+        var statusBox = document.getElementById('printer-status');
+        if (!statusBox) return;
+
+        statusBox.addEventListener('click', function () {
+          fetch('/filament', { method: 'POST' })
+            .then(function (response) {
+              if (!response.ok) {
+                throw new Error('Failed to change filament');
+              }
+              return response.json();
+            })
+            .then(function () {
+              if (typeof getReadings === 'function') {
+                getReadings();
+              }
+            })
+            .catch(function (err) {
+              console.error(err);
+            });
+        });
+      })();
+
       // Fetch version from server
       fetch('/version').then(r => r.text()).then(v => {
             var myObj = JSON.parse(v);
