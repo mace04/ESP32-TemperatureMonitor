@@ -6,6 +6,11 @@
         "optimum_temperature": 26
     },
     {
+        "name": "PLA-LW",
+        "lowest_temperature": 20,
+        "highest_temperature": 30,
+        "optimum_temperature": 26.5
+    },    {
         "name": "PLA+",
         "lowest_temperature": 20,
         "highest_temperature": 40,
