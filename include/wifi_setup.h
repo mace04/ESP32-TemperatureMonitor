@@ -159,6 +159,7 @@ namespace WifiSetup {
     }
 
     void connect() {
+        lcd.displayWiFiStatus("Connecting...");
         WiFi.mode(WIFI_STA);
         WiFi.setHostname(HOSTNAME);
         WiFi.begin(SSID, PASSWORD);
@@ -170,10 +171,12 @@ namespace WifiSetup {
 
         if (WiFi.status() != WL_CONNECTED) {
             Serial.println("\nWiFi connection failed. Starting hotspot...");
+            lcd.displayWiFiStatus("Hotspot Active");
             WiFi.softAP("ESP32_Hotspot", "12345678");
             Serial.println("Hotspot started. IP address: " + WiFi.softAPIP().toString());
         } else {
             Serial.println("\nWiFi connected. IP address: " + WiFi.localIP().toString());
+            lcd.displayWiFiStatus("Connected");
         }
     }
 

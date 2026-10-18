@@ -126,6 +126,7 @@ void setup() {
   } else {
     Serial.println("Failed to create email queue.");
   }
+  lcd.clear();
 }
 
 void loop() {
