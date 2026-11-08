@@ -21,5 +21,11 @@
         "lowest_temperature": 25,
         "highest_temperature": 50,
         "optimum_temperature": 45
+    },
+    {
+        "name": "TPU",
+        "lowest_temperature": 20,
+        "highest_temperature": 35,
+        "optimum_temperature": 26.5
     }
 ]

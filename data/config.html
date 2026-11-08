@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Edit Filament Settings</title>
+    <style>
+        .editor-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
+            padding: 30px;
+        }
+
+        .editor-title {
+            color: #034078;
+            font-size: 1.5rem;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 400px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            resize: vertical;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        button {
+            flex: 1;
+            max-width: 200px;
+            padding: 12px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-save {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-save:hover:not(:disabled) {
+            background-color: #218838;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-reset {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-reset:hover {
+            background-color: #5a6268;
+            box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+            display: none;
+            font-weight: bold;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .info-text {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+
+        .info-text strong {
+            color: #034078;
+        }
+    </style>
+</head>
+<body>
+    <div class="topnav">
+        <h1>Edit Filament Settings</h1>
+        <div style="grid-column:2; justify-self:end; align-self:start;width:150px;">
+            <a href="/" class="link-button" title="Return to main menu">Home</a>
+        </div>
+    </div>
+    <div class="content">
+        <div class="editor-container">
+            <h2 class="editor-title">Filament Settings Editor</h2>
+            <form id="filament-form">
+                <textarea id="json-editor" placeholder="Loading filament settings..."></textarea>
+                <div class="info-text">
+                    <strong>Note:</strong> JSON format will be validated before saving. Each filament entry should have:
+                    <br>• name: Filament name (string)
+                    <br>• lowest_temperature: Minimum temperature (number)
+                    <br>• highest_temperature: Maximum temperature (number)
+                    <br>• optimum_temperature: Ideal temperature (number)
+                </div>
+                <div class="button-group">
+                    <button type="button" class="btn-reset" onclick="resetEditor()">Reset</button>
+                    <button type="submit" class="btn-save">Save Changes</button>
+                </div>
+                <div id="message" class="message"></div>
+            </form>
+        </div>
+    </div>
+    <div style="position: fixed; bottom: 10px; right: 10px; color: #888; font-size: 12px;">
+        Version: <span id="version">Loading...</span>
+    </div>
+
+    <script>
+        const form = document.getElementById('filament-form');
+        const textarea = document.getElementById('json-editor');
+        const messageDiv = document.getElementById('message');
+        let originalContent = '';
+
+        // Load filament settings on page load
+        async function loadSettings() {
+            try {
+                const response = await fetch('/filaments');
+                if (!response.ok) {
+                    throw new Error('Failed to load filament settings');
+                }
+                const data = await response.text();
+                originalContent = data;
+                textarea.value = JSON.stringify(JSON.parse(data), null, 2);
+            } catch (error) {
+                showMessage('Error loading settings: ' + error.message, 'error');
+                textarea.value = '[]';
+            }
+        }
+
+        // Validate JSON format
+        function validateJSON(jsonString) {
+            try {
+                const data = JSON.parse(jsonString);
+                
+                // Check if it's an array
+                if (!Array.isArray(data)) {
+                    return { valid: false, error: 'JSON must be an array of filament objects' };
+                }
+
+                // Validate each filament entry
+                for (let i = 0; i < data.length; i++) {
+                    const entry = data[i];
+                    
+                    if (typeof entry !== 'object' || entry === null) {
+                        return { valid: false, error: `Entry ${i} is not an object` };
+                    }
+
+                    if (typeof entry.name !== 'string' || entry.name.trim() === '') {
+                        return { valid: false, error: `Entry ${i}: "name" must be a non-empty string` };
+                    }
+
+                    if (typeof entry.lowest_temperature !== 'number') {
+                        return { valid: false, error: `Entry ${entry.name}: "lowest_temperature" must be a number` };
+                    }
+
+                    if (typeof entry.highest_temperature !== 'number') {
+                        return { valid: false, error: `Entry ${entry.name}: "highest_temperature" must be a number` };
+                    }
+
+                    if (typeof entry.optimum_temperature !== 'number') {
+                        return { valid: false, error: `Entry ${entry.name}: "optimum_temperature" must be a number` };
+                    }
+
+                    if (entry.lowest_temperature > entry.optimum_temperature || 
+                        entry.optimum_temperature > entry.highest_temperature) {
+                        return { valid: false, error: `Entry ${entry.name}: Temperature range is invalid (lowest <= optimum <= highest)` };
+                    }
+                }
+
+                return { valid: true };
+            } catch (error) {
+                return { valid: false, error: 'Invalid JSON format: ' + error.message };
+            }
+        }
+
+        // Show message to user
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = 'message ' + type;
+            
+            // Auto-hide success message after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.className = 'message';
+                }, 5000);
+            }
+        }
+
+        // Reset editor to original content
+        function resetEditor() {
+            textarea.value = JSON.stringify(JSON.parse(originalContent), null, 2);
+            messageDiv.className = 'message';
+        }
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const jsonString = textarea.value.trim();
+            const validation = validateJSON(jsonString);
+
+            if (!validation.valid) {
+                showMessage('Validation Error: ' + validation.error, 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: jsonString
+                });
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error || 'Failed to save settings');
+                }
+
+                originalContent = jsonString;
+                showMessage('Filament settings saved successfully!', 'success');
+            } catch (error) {
+                showMessage('Error saving settings: ' + error.message, 'error');
+            }
+        });
+
+        // Fetch version from server
+        fetch('/version')
+            .then(r => r.text())
+            .then(v => {
+                try {
+                    const versionObj = JSON.parse(v);
+                    document.getElementById('version').textContent = versionObj.version;
+                } catch {
+                    document.getElementById('version').textContent = v;
+                }
+            })
+            .catch(() => {
+                document.getElementById('version').textContent = 'Unknown';
+            });
+
+        // Load settings on page load
+        loadSettings();
+    </script>
+</body>
+</html>

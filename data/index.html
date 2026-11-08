@@ -11,13 +11,14 @@
   <body>
     <div class="topnav">
       <h1>3D Printer Temperature Monitor</h1>
-      <div style="grid-column:2; justify-self:end; align-self:start;width:150px;">
-        <a href="/update" class="link-button" title="Update Firmware">Update</a>
+      <div style="grid-column:2; justify-self:end; align-self:start;display:flex;gap:12px;padding-right:20px;">
+        <a href="/config" class="link-button" title="Edit Filament" style="width:auto;white-space:nowrap;">Edit Filament</a>
+        <a href="/update" class="link-button" title="Update Firmware" style="width:auto;">Update</a>
       </div>
     </div>
     <div class="content">
       <div class="status-card">
-        <h2>3D Printer Environment Status</h2>
+        <h2>3D Printer Environment Status</h2> 
         <div id="printer-status" class="status-display not-ready" title="Click to change filament" style="cursor: pointer;">
           <span class="status-text">NOT READY</span>
         </div>
