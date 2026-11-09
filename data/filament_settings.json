@@ -6,6 +6,11 @@
         "optimum_temperature": 26
     },
     {
+        "name": "PLA-LW",
+        "lowest_temperature": 20,
+        "highest_temperature": 30,
+        "optimum_temperature": 26.5
+    },    {
         "name": "PLA+",
         "lowest_temperature": 20,
         "highest_temperature": 40,
@@ -16,5 +21,11 @@
         "lowest_temperature": 25,
         "highest_temperature": 50,
         "optimum_temperature": 45
+    },
+    {
+        "name": "TPU",
+        "lowest_temperature": 20,
+        "highest_temperature": 35,
+        "optimum_temperature": 26.5
     }
 ]

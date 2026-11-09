@@ -29,6 +29,16 @@ public:
     return true;
   }
 
+  void displayWiFiStatus(const char* status) {
+    lcd.setCursor(0, 0);
+    lcd.print("WiFi: ");
+    lcd.print(status);
+    lcd.print("        ");  // Clear any leftover text
+  }
+
+  void clear(){
+    lcd.clear();
+  }
   // Display IP address once at boot time
   void displayIPAddress(const char* ipAddress) {
     if (!ipDisplayed) {

@@ -72,6 +72,60 @@ namespace WifiSetup {
         ESP.restart();
     }
 
+    void handleConfigPost(AsyncWebServerRequest *request) {
+        String* body = static_cast<String*>(request->_tempObject);
+        request->_tempObject = nullptr;
+
+        if (body == nullptr) {
+            request->send(400, "application/json",
+                          "{\"error\":\"Missing configuration content\"}");
+            return;
+        }
+
+        File file = SPIFFS.open("/filament_settings.json", "w");
+        if (!file) {
+            delete body;
+            request->send(500, "application/json",
+                          "{\"error\":\"Failed to open filament settings file\"}");
+            return;
+        }
+
+        const size_t contentLength = body->length();
+        const size_t written = file.print(*body);
+        file.close();
+
+        if (written != contentLength) {
+            delete body;
+            request->send(500, "application/json",
+                          "{\"error\":\"Failed to save filament settings\"}");
+            return;
+        }
+
+        delete body;
+        filamentManager.begin();
+
+        request->send(200, "application/json", "{\"status\": \"success\"}");
+    }
+
+    void handleConfigPostBody(AsyncWebServerRequest *request, uint8_t *data,
+                              size_t len, size_t index, size_t total) {
+        if (index == 0) {
+            String* body = new String();
+            if (!body->reserve(total)) {
+                delete body;
+                return;
+            }
+            request->_tempObject = body;
+        }
+
+        String* body = static_cast<String*>(request->_tempObject);
+        if (body != nullptr &&
+            !body->concat(reinterpret_cast<const char*>(data), len)) {
+            delete body;
+            request->_tempObject = nullptr;
+        }
+    }
+
     void handlePostUpload(AsyncWebServerRequest *request, const String& filename, size_t index, 
                         uint8_t *data, size_t len, bool final) {
         static uint32_t updateSize = 0;
@@ -159,6 +213,7 @@ namespace WifiSetup {
     }
 
     void connect() {
+        lcd.displayWiFiStatus("Connecting...");
         WiFi.mode(WIFI_STA);
         WiFi.setHostname(HOSTNAME);
         WiFi.begin(SSID, PASSWORD);
@@ -170,10 +225,12 @@ namespace WifiSetup {
 
         if (WiFi.status() != WL_CONNECTED) {
             Serial.println("\nWiFi connection failed. Starting hotspot...");
+            lcd.displayWiFiStatus("Hotspot Active");
             WiFi.softAP("ESP32_Hotspot", "12345678");
             Serial.println("Hotspot started. IP address: " + WiFi.softAPIP().toString());
         } else {
             Serial.println("\nWiFi connected. IP address: " + WiFi.localIP().toString());
+            lcd.displayWiFiStatus("Connected");
         }
     }
 
@@ -221,6 +278,28 @@ namespace WifiSetup {
             request->send(200, "application/json", settings.toJson());
         });
 
+        // Settings config GET
+        server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request) {
+            request->send(SPIFFS, "/config.html", "text/html");
+        });
+
+        // Settings config POST
+        server.on("/config", HTTP_POST, handleConfigPost, nullptr,
+            [](AsyncWebServerRequest *request, uint8_t *data, size_t len,
+               size_t index, size_t total) {
+                WifiSetup::handleConfigPostBody(request, data, len, index, total);
+            });
+
+
+        // Settings filament GET
+        server.on("/filaments", HTTP_GET, [](AsyncWebServerRequest *request) {
+            if (SPIFFS.exists("/filament_settings.json")) {
+                request->send(SPIFFS, "/filament_settings.json", "application/json");
+                return;
+            }
+            request->send(404, "text/html", "{\"error\": \"Filament settings not found\"}");
+        });
+
         // Settings file POST (replace existing file)
         server.on(
             "/settings",
@@ -266,6 +345,17 @@ namespace WifiSetup {
                     String(F("\", \"filament\": \"")) + filamentManager.currentName() + F("\" }");
             request->send(200, "application/json", json);
             json = String();
+        });
+
+        server.on("/filament", HTTP_GET, [](AsyncWebServerRequest *request) {
+            String json = String(F("{\"filament\": \"")) + filamentManager.currentName() + F("\"}" );
+            request->send(200, "application/json", json);
+        });
+
+        server.on("/filament", HTTP_POST, [](AsyncWebServerRequest *request) {
+            filamentManager.cycle();
+            String json = String(F("{\"filament\": \"")) + filamentManager.currentName() + F("\"}" );
+            request->send(200, "application/json", json);
         });
 
         server.on("/fan", HTTP_GET, [](AsyncWebServerRequest *request) {
