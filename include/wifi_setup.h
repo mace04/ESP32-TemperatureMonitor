@@ -10,6 +10,7 @@
 #include "lcd_display.h"
 #include "filament_manager.h"
 #include "settings.h"
+#include "version.h"
 
 extern Sensor sensor;
 extern LCDDisplay lcd;

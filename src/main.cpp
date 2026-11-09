@@ -8,6 +8,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
+#include "version.h"
 #define BMP180
 
 
@@ -16,6 +17,7 @@ LocalMqttBroker mqtt;
 LCDDisplay lcd;  // I2C address 0x27 by default
 Settings settings;
 FilamentManager filamentManager;
+int one;
 
 struct EmailRequest {
   float temperature;
@@ -130,6 +132,7 @@ void setup() {
 }
 
 void loop() {
+  one = 0;
   unsigned long now = millis();
   bool uploading = WifiSetup::isUploading();
 
